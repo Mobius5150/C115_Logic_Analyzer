@@ -3,7 +3,7 @@ Implements a very simple matrix class with doctests.
 """
 
 class Matrix:
-  def __init__(self, row_size, column_size, init_val=0):
+	def __init__(self, row_size, column_size, init_val=0):
 		self.__column_size = column_size
 		self.__row_size = row_size
 		self.__rows = []
@@ -25,7 +25,6 @@ class Matrix:
 
 		# Removes the last newline character
 		return rep[:len(rep)-1]
-
 
 	def get_val(self, row, column):
 		"""
@@ -57,6 +56,38 @@ class Matrix:
 
 		"""
 		self.__rows[row][column] = value
+
+	def bin_set_row(self, row, num, num_bits):
+		"""
+		Takes the last num_bits of num and inserts them into the row.
+		num = 0 0 0 0 0 0 1 0 1 1
+		row =           # # # # # # # # #
+		Then bin_set_row, with num_bits = 5 will give row:
+		row = 0 1 0 1 1 # # # #
+
+		>>> M = Matrix(1, 6)
+		>>> M.bin_set_row(0, 11, 5)
+		>>> M.get_row(0)
+		[0, 1, 0, 1, 1, 0]
+
+		>>> M.bin_set_row(0, 11, 4)
+		>>> M.get_row(0)
+		[1, 0, 1, 1, 1, 0]
+		"""
+		if num_bits <= 0:
+			return
+
+		if num_bits >= self.__column_size:
+			raise Exception("Num bits cannot be larger than num columns")
+
+		for i in range(0, num_bits):
+			self.__rows[row][num_bits-1-i] = (num >> i) & 1
+
+	def get_num_rows(self):
+		return self.__row_size
+
+	def get_num_cols(self):
+		return self.__column_size
 
 	def get_row(self, row):
 		"""
@@ -123,5 +154,5 @@ class Matrix:
 
 
 if __name__ == "__main__":
-    import doctest
-    doctest.testmod()
+	import doctest
+	doctest.testmod()
