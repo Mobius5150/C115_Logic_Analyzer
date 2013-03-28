@@ -1,3 +1,6 @@
+"""
+Implements a very simple matrix class with doctests.
+"""
 
 class Matrix:
   def __init__(self, row_size, column_size, init_val=0):
