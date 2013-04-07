@@ -9,11 +9,14 @@ class Matrix:
 		self.__rows = []
 		self.__init_val = init_val
 
-		# Load in empty data
-		for i in range(row_size):
-			self.__rows.append([])
-			for j in range(column_size):
-				self.__rows[i].append(init_val)
+		# Build a matrix of initial values
+		self.__rows = [[init_val] * j for i in range(row_size)]
+
+		# # Load in empty data
+		# for i in range(row_size):
+		# 	self.__rows.append([])
+		# 	for j in range(column_size):
+		# 		self.__rows[i].append(init_val)
 
 	def __repr__(self):
 		return "Matrix()"
@@ -57,7 +60,13 @@ class Matrix:
 		"""
 		self.__rows[row][column] = value
 
-	def bin_set_row(self, row, num, num_bits):
+	def set_init_val(self, init_val):
+		"""
+		Sets the value used to initialize new rows/colums
+		"""
+		self.__init_val = init_val
+
+	def bin_set_row(self, row, num, num_bits, start_offset = 0):
 		"""
 		Takes the last num_bits of num and inserts them into the row.
 		num = 0 0 0 0 0 0 1 0 1 1
@@ -70,18 +79,45 @@ class Matrix:
 		>>> M.get_row(0)
 		[0, 1, 0, 1, 1, 0]
 
+		>>> M = Matrix(1, 6)
 		>>> M.bin_set_row(0, 11, 4)
 		>>> M.get_row(0)
-		[1, 0, 1, 1, 1, 0]
+		[1, 0, 1, 1, 0, 0]
+
+		>>> M = Matrix(1, 6)
+		>>> M.bin_set_row(0, 11, 4, start_offset = 1)
+		>>> M.get_row(0)
+		[0, 1, 0, 1, 1, 0]
+
+		>>> M = Matrix(1, 6)
+		>>> M.bin_set_row(0, 11, 4, start_offset = 2)
+		>>> M.get_row(0)
+		[0, 0, 1, 0, 1, 1]
+
+		>>> M = Matrix(1, 6)
+		>>> M.bin_set_row(0, [1, 0, 1, 1], 4)
+		>>> M.get_row(0)
+		[1, 0, 1, 1, 0, 0]
+
+		>>> M = Matrix(1, 6)
+		>>> M.bin_set_row(0, [1, 0, 1, 1], 4, start_offset = 2)
+		>>> M.get_row(0)
+		[0, 0, 1, 0, 1, 1]
 		"""
-		if num_bits <= 0:
+		if num_bits + start_offset <= 0:
 			return
 
-		if num_bits >= self.__column_size:
+		if num_bits + start_offset > self.__column_size:
 			raise Exception("Num bits cannot be larger than num columns")
 
-		for i in range(0, num_bits):
-			self.__rows[row][num_bits-1-i] = (num >> i) & 1
+		if type(num) is list:
+			num.reverse()
+			for i in range(0, num_bits):
+				self.__rows[row][num_bits + start_offset -1-i] = (num[i]) & 1
+			num.reverse()
+		else:
+			for i in range(0, num_bits):
+				self.__rows[row][num_bits + start_offset -1-i] = (num >> i) & 1
 
 	def get_num_rows(self):
 		return self.__row_size
@@ -99,6 +135,43 @@ class Matrix:
 		[0, 1]
 		"""
 		return self.__rows[row]
+
+	def insert_row(self):
+		"""
+		Adds a row to the end of the matrix.
+		"""
+		new_row = [self.__init_val for i in range(self.__column_size)]
+		
+		self.__rows.insert(row_position, new_row)
+
+
+	def insert_row_at_position(self, row_position, new_row = None):
+		"""
+		Inserts a blank row after the given row.
+
+		>>> M = Matrix(2, 2, 1)
+		>>> M.set_init_val(0)
+		>>> M.insert_row_at_position(1)
+		>>> print(M)
+		[1, 1]
+		[0, 0]
+		[1, 1]
+
+		>>> M.insert_row_at_position(1, [-1, -1])
+		>>> print(M)
+		[1, 1]
+		[-1, -1]
+		[0, 0]
+		[1, 1]
+
+		"""
+		if new_row is None:
+			new_row = [self.__init_val for i in range(self.__column_size)]
+
+		if len(new_row) < self.__column_size:
+			raise Exception("Error: Specified column too small.")
+		
+		self.__rows.insert(row_position, new_row)
 
 	def get_column(self, column):
 		"""
@@ -151,6 +224,36 @@ class Matrix:
 
 		self.__row_size = new_num_rows
 		self.__column_size = new_num_columns
+
+	def filter_rows(self, row_filter=None):
+		"""
+		Returns an array of rows filtered by the given filter function.
+
+		If no filter is specified returns the whole matrix.
+
+		>>> M = Matrix(3, 3)
+		>>> M.set_val(0, 0, 1)
+		>>> M.set_val(2, 2, 1)
+		>>> M.filter_rows()
+		[[1, 0, 0], [0, 0, 0], [0, 0, 1]]
+		>>> M.filter_rows(lambda row: 1 in row)
+		[[1, 0, 0], [0, 0, 1]]
+		"""
+		if row_filter is None:
+			return self.__rows
+
+		return_array = []
+		for row in self.__rows:
+			if row_filter(row):
+				return_array.append(row)
+
+		return return_array
+
+
+def matrix_generator(inputs=0, states=0, outputs=0):
+	# Calculate the number of columns we need
+	num_cols = inputs+outputs+2*states
+	return Matrix(1, num_cols)
 
 
 if __name__ == "__main__":
