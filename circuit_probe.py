@@ -18,40 +18,60 @@ class CircuitProbe:
 	NUM_GPIO = 8
 
 	# All of the availble GPIO pins
-	reserved_pins = { "power": 2, "clock": 3 }
-	available_pins = [4, 7, 8, 9, 10, 11, 14, 15, 17, 18, 22, 23, 24, 25, 27]
+	reserved_pins = { "power": 3, "clock": 5 }
+	available_pins = [7, 8, 10, 11, 12, 13, 15, 16, 18, 19, 21, 22, 23, 24, 27]
 
-	def __init__(self, inputs, outputs, states = 0, enable_powercycle = False, propogation_time = 0.01):
+	# Controls default debug state
+	default_debug_state = True
+
+	def __init__(self, inputs, outputs, states = 0, enable_powercycle = True, propogation_time = .01, debug = None):
+		"""
+		If debug is None, it will default to the default debug state of the CircuitProbe class. To enable or disable debug mode
+		Initialize CircuitProbe with debug = True of debug = False.
+		"""
+		if debug is None:
+			debug = CircuitProbe.default_debug_state
+
+		# Enable or disable debug mode
+		self.set_debug(debug)
+
+		# Set the pin numbering mode
+		GPIO.setmode(GPIO.BOARD)
+
+		# Setup the power and clock pins	
+		for i in CircuitProbe.reserved_pins:
+			pin = CircuitProbe.reserved_pins[i]
+			if self.__debug:
+				print("Setting pin {} as {}".format(pin, i))
+			GPIO.setup(pin, GPIO.OUT, initial=GPIO.HIGH)
+			
+
 		# Setup the base state
 		self.reset(inputs = inputs, outputs = outputs, states = states, enable_powercycle = enable_powercycle, propogation_time = propogation_time)
+
+	def set_debug(self, debug):
+		"""
+		Enables or disables circuit probe debug mode which prints additional output.
+		"""
+		self.__debug = debug
+		GPIO.setwarnings(debug)
 
 	def __valid_num_io(self, inputs, outputs, states):
 		"""
 		Checks that the number of inputs/outputs/states is valid for the number of GPIO pins available.
 
 		>>> CP = CircuitProbe(1, 1)
-		>>> CP.__valid_num_io__(4, 3, 1)
-		True
+		>>> CP.reset(4, 3, 1)
 
-		>>> CP.__valid_num_io__(4, 3, 2)
-		True
+		>>> CP.reset(4, 3, 2)
 
-		>>> CP.__valid_num_io__(5, 3, 1)
-		False
+		>>> CP.reset(5, 3, 1)
 
-		>>> CP.__valid_num_io__(4, 4, 1)
-		False
+		>>> CP.reset(4, 4, 1)
 
-		>>> CP.__valid_num_io__(0, 3, 1)
-		False
-
-		>>> CP.__valid_num_io__(4, 0, 1)
-		False
-
-		>>> CP.__valid_num_io__(4, 3, 0)
-		False
+		>>> CP.reset(4, 3, 0)
 		"""
-		return (NUM_GPIO < inputs + states and inputs > 0 and outputs > 0 and states >= 0)
+		return (CircuitProbe.NUM_GPIO > (inputs + states) and inputs > 0 and outputs > 0 and states >= 0)
 
 	def reset(self, inputs = None, outputs = None, states = None, enable_powercycle = False, propogation_time = 0.01):
 		"""
@@ -68,29 +88,69 @@ class CircuitProbe:
 			self.__outputs = outputs
 			self.__states = states
 
-			# If theres no state machines, mark that theres one state
-			if self.__states <= 0:
-				self.__states = 1
-
 			# Keep track of the largest input given the number of available inputs
 			self.__max_input = (2**inputs) - 1
 
-		self.Matrix = Matrix(1, self.__inputs + self.__outputs + 2*self.__states)
+		## Setup GPIO pins
+		# Configure inputs
+		for i in CircuitProbe.available_pins[:self.__inputs]:
+			if self.__debug:
+				print("Setting channel {} as circuit input.".format(i))
+			GPIO.setup(i, GPIO.OUT, initial=GPIO.LOW)
+
+		# Configure outputs
+		for i in CircuitProbe.available_pins[self.__inputs:(self.__inputs + self.__states + self.__outputs)]:
+			if self.__debug:
+				print("Setting channel {} as circuit output/state.".format(i))
+			GPIO.setup(i, GPIO.IN)
+
+		# Initialize the matrix for holding values
+		self.matrix = Matrix(0, self.__inputs + self.__outputs + 2*self.__states)
 		self.analyzed_outputs = []
+
+		# Some internal state stuff
 		self.__powercycle_enabled = enable_powercycle
 		self.__circuit_propogation_time = propogation_time
 
-	def __powercycle(self):
+	def powercycle(self):
 		"""
-		Powercycles the circuit and sleeps for the circuit timeout time before returning.
+		Turns the circuit off, sleeps then turns back on. Then sleeps for the circuit timeout time before returning.
 		"""
 		if not self.__powercycle_enabled:
+			if self.__debug:
+				print("Powercycling not enabled.")
+
 			return
 
+		if self.__debug:
+			print("Powercycling circuit.")
+
 		# Power cycle pin is the first pin
-		GPIO.output(reserved_pins["power"], GPIO.LOW)
-		time.sleep(self.__circuit_propogation_time)		
-		GPIO.output(reserved_pins["power"], GPIO.HIGH)
+		GPIO.output(CircuitProbe.reserved_pins["power"], GPIO.LOW)
+		time.sleep(self.__circuit_propogation_time)
+		GPIO.output(CircuitProbe.reserved_pins["power"], GPIO.HIGH)
+		time.sleep(self.__circuit_propogation_time)
+
+	def power_on(self):
+		"""
+		Turns the circuit power on and waits the propogation time.
+		"""
+		if self.__debug:
+			print("Circuit power on.")
+		GPIO.output(CircuitProbe.reserved_pins["power"], GPIO.HIGH)
+		time.sleep(self.__circuit_propogation_time)
+
+	def power_off(self):
+		"""
+		Turns the circuit power off and waits the propogation time.
+		"""
+		if self.__debug:
+			print("Circuit power off.")
+		GPIO.output(CircuitProbe.reserved_pins["power"], GPIO.LOW)
+		time.sleep(self.__circuit_propogation_time)
+
+	def get_matrix(self):
+		return self.matrix
 
 	def get_to_state(self, state):
 		"""
@@ -99,6 +159,8 @@ class CircuitProbe:
 		Usage:
 		CP.get_to_state([0, 1]) # Goes to state 01
 		"""
+		print("Get_to_state not implemented")
+		pass
 
 	def get_current_state(self):
 		"""
@@ -117,7 +179,9 @@ class CircuitProbe:
 		output_list = []
 
 		for i in range(self.__outputs):
-			state_list.append(bool(GPIO.input(CircuitProbe.available_pins[self.__outputs + self.__states + i])))
+			output_list.append(GPIO.input(CircuitProbe.available_pins[self.__outputs + self.__states + i]))
+			if self.__debug:
+				print("Pin {} output: {}".format(CircuitProbe.available_pins[self.__outputs + self.__states + i], output_list[-1]))
 
 		return output_list
 
@@ -127,17 +191,17 @@ class CircuitProbe:
 		Sets the ouputs to the binary representation of val
 
 		"""
-		for i in range(0, self.inputs):
-			GPIO.output(available_pins[i], (self.inputs-i)>>i & 1)
+		for i in range(0, self.__inputs):
+			GPIO.output(CircuitProbe.available_pins[i], val>>(self.__inputs-i-1) & 1)
 
 
 	def pulse_clock(self):
 		"""
 		Generates one clock cycle on the output and waits for one propogation_time.
 		"""
-		GPIO.output(reserved_pins["clock"], GPIO.HIGH)
+		GPIO.output(CircuitProbe.reserved_pins["clock"], GPIO.HIGH)
 		time.sleep(self.__circuit_propogation_time)
-		GPIO.output(reserved_pins["clock"], GPIO.LOW)
+		GPIO.output(CircuitProbe.reserved_pins["clock"], GPIO.LOW)
 		time.sleep(self.__circuit_propogation_time)
 
 	def test_and_record(self, current_state, test_val):
@@ -151,32 +215,92 @@ class CircuitProbe:
 		# Clock the circuit
 		self.pulse_clock()
 
+		current_state_bin = self.get_binary_state_representation(current_state)
+
 		# Record the output of the circuit
 		self.matrix.insert_row()
 		self.matrix.bin_set_row(-1,test_val, self.__inputs)
-		self.matrix.bin_set_row(-1,current_state, self.__states, start_offset = self.__inputs)
+		self.matrix.bin_set_row(-1,current_state_bin, self.__states, start_offset = self.__inputs)
 		self.matrix.bin_set_row(-1,self.get_current_output(), self.__outputs, start_offset = self.__inputs + self.__states)
 
 		# Check which state the circuit went to
-		current_state = self.get_current_state()
+		current_state = self.get_numerical_state_representation(self.get_current_state())
 
 		# Record the state in the matrix
-		self.matrix.bin_set_row(-1,current_state, self.__states, start_offset = self.__inputs + self.__states + self.__outputs)
+		self.matrix.bin_set_row(-1,current_state_bin, self.__states, start_offset = self.__inputs + self.__states + self.__outputs)
 
 		return current_state
 
-	def __get_binary_state_representation__(self, state):
-		rep = [ 0 ]
+	def get_binary_state_representation(self, num):
+		"""
+		Takes an input number and returns an array of bits to represent that number.
+
+		The length of the representation is always the number of states for the circuit probe.
+
+		>>> cp = CircuitProbe(3, 3, 0)
+		>>> cp.get_binary_state_representation(0)
+		[]
+		>>> cp.get_binary_state_representation(1)
+		[]
+		>>> cp.get_binary_state_representation(2)
+		[]
+
+		>>> cp = CircuitProbe(3, 3, 2)
+		>>> cp.get_binary_state_representation(0)
+		[0, 0]
+
+		>>> cp.get_binary_state_representation(1)
+		[0, 1]
+
+		>>> cp.get_binary_state_representation(2)
+		[1, 0]
+
+		>>> cp.get_binary_state_representation(3)
+		[1, 1]
+		"""
+		rep = []
 		index = 0
-		shifted = state >> index
-		while shifted:
-			rep[index] = shifted & 1
+		shifted = num
+		while index < self.__states:
+			rep.append(shifted & 1)
 
 			# Advance the shift
 			index += 1
-			shifted >> 1
+			shifted >>= 1
 
-		return reversed(rep)
+		return rep[::-1]
+
+	def get_numerical_state_representation(self, num):
+		"""
+		Takes an input list of bytes and returns it as a number
+
+		>>> cp = CircuitProbe(3, 3, 0)
+		>>> cp.get_numerical_state_representation([0, 0])
+		0
+		>>> cp.get_numerical_state_representation([0, 1])
+		1
+		>>> cp.get_numerical_state_representation([1, 0])
+		2
+		>>> cp.get_numerical_state_representation([1, 1])
+		3
+
+		>>> cp.get_numerical_state_representation([])
+		0
+		>>> cp.get_numerical_state_representation([0])
+		0
+		>>> cp.get_numerical_state_representation([1])
+		1
+		>>> cp.get_numerical_state_representation([0, 0, 0])
+		0
+		"""
+		index = 0
+		shifted = 0
+
+		for i in num[::-1]:
+			shifted |= (i<<index)
+			index += 1
+
+		return shifted
 			
 	def get_closest_untested_state(self, untested, current_state, base_state, edges):
 		"""
@@ -228,16 +352,22 @@ class CircuitProbe:
 
 	def probe(self):
 		"""
-		Probes the circuit.
+		Probes the circuit. Returns a list of unreachable states.
 		"""
 
 		# Can't do anything if all outputs have been analyzed
 		if len(self.analyzed_outputs) >= self.__outputs:
+			if self.__debug:
+				print("All outputs have been analyzed")
 			return
 
 		tested = {}
 
-		last_state = base_state = self.get_current_state()
+		# Turn on the circuit and check its base state.
+		self.power_on()
+		last_state = base_state = self.get_numerical_state_representation(self.get_current_state())
+		if self.__debug:
+			print("Circuit base state: {}".format(base_state))
 
 		# Edges contains the path from each state to each state that can be reached from that state
 		# Destinations are contained in a tuple: (destination, input) Where input is the required input
@@ -247,9 +377,6 @@ class CircuitProbe:
 		# Start by applying inputs sequentially to whatever state the circuit is currently in.
 		# This should reduce path lengths generated by the pathfinding
 		while True:
-			# Check the current state
-			state = self.get_current_state()
-
 			# Check the next test value
 			if last_state in tested:
 				# Check if this state has received all possible inputs
@@ -262,6 +389,9 @@ class CircuitProbe:
 			else:
 				tested[last_state] = 0
 
+			if self.__debug:
+				print("Testing state {} with input {}".format(last_state, tested[last_state]))
+
 			# Apply the input value
 			t_last_state = last_state
 			last_state = self.test_and_record(last_state, tested[last_state])
@@ -270,30 +400,40 @@ class CircuitProbe:
 			if t_last_state != last_state:
 				if t_last_state not in edges:
 					edges[t_last_state] = [ (base_state, None) ] # Each state can go to the base state by resetting
-				edges(t_last_state).append((last_state, tested[last_state]))
+				edges[t_last_state].append((last_state, tested[last_state]))
+				if self.__debug:
+					print("Edges are now: ")
+					print(edges)
+
+		if self.__debug:
+			print("Test stage 1 finished.")
 
 		# Start by building a list of states/inputs that require testing
 		untested = {}
 		for i in range(self.__states):
 			# Get a binary representation of the state
-			i_state = self.__get_binary_state_representation__(i)
+			i_state = self.get_binary_state_representation(i)
 
 			# Check if this state has untested inputs
-			if tested[i_state] != self.__max_input:
-				if i_state not in untested:
-					untested[i_state] = []
+			if tested[i] != self.__max_input:
+				if i not in untested:
+					untested[i] = []
 
 				# State has untested inputs
-				for j in range(tested[i_state] + 1, self.__max_input + 1):
-					untested[i_state].append(j)
+				for j in range(tested[i] + 1, self.__max_input + 1):
+					untested[i].append(j)
+
+		if self.__debug:
+			print("Untested states for part 2: {}".format(untested))
 
 		# If there are no untested states, we can stop here!
 		if len(untested) == 0:
+			self.power_off()
 			return [] # Return empty list for no unreachable states
 
 		# Now attempt to get to each of these test cases
 		while untested:
-			# Check if state has untested inputs
+			# Check if state has untested inputsif self.__debug:
 			if last_state in untested:
 				# The current state has untested inputs, try the next one
 				t_last_state = last_state
@@ -315,6 +455,11 @@ class CircuitProbe:
 				# This state has no untested inputs, pathfind to the closest state with untested inputs
 				pass
 
+		self.power_off()
+		return untested
+
 if __name__ == "__main__":
+	# Disable debug mode
+	CircuitProbe.default_debug_state = False
 	import doctest
 	doctest.testmod()
