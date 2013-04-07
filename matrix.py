@@ -10,10 +10,16 @@ class Matrix:
 		self.__init_val = init_val
 
 		# Build a matrix of initial values
-		self.__rows = [[init_val] * column_size for i in range(row_size)]
+		self.__rows = [[init_val] * j for i in range(row_size)]
+
+		# # Load in empty data
+		# for i in range(row_size):
+		# 	self.__rows.append([])
+		# 	for j in range(column_size):
+		# 		self.__rows[i].append(init_val)
 
 	def __repr__(self):
-		return self.__str__()
+		return "Matrix()"
 
 	def __str__(self):
 		rep = ""
@@ -133,26 +139,10 @@ class Matrix:
 	def insert_row(self):
 		"""
 		Adds a row to the end of the matrix.
-
-		>>> M = Matrix(2, 2)
-		>>> M.insert_row()
-		>>> print(M)
-		[0, 0]
-		[0, 0]
-		[0, 0]
-
-		>>> M.expand(3, 3)
-		>>> M.insert_row()
-		>>> M
-		[0, 0, 0]
-		[0, 0, 0]
-		[0, 0, 0]
-		[0, 0, 0]
 		"""
-		self.__row_size += 1
 		new_row = [self.__init_val for i in range(self.__column_size)]
 		
-		self.__rows.append(new_row)
+		self.__rows.insert(row_position, new_row)
 
 
 	def insert_row_at_position(self, row_position, new_row = None):
@@ -181,7 +171,6 @@ class Matrix:
 		if len(new_row) < self.__column_size:
 			raise Exception("Error: Specified column too small.")
 		
-		self.__row_size += 1
 		self.__rows.insert(row_position, new_row)
 
 	def get_column(self, column):
@@ -231,7 +220,7 @@ class Matrix:
 		for i in range(self.__row_size, new_num_rows):
 			self.__rows.append([])
 			for j in range(new_num_columns):
-				self.__rows[-1].append(self.__init_val)
+				self.__rows[i].append(self.__init_val)
 
 		self.__row_size = new_num_rows
 		self.__column_size = new_num_columns
