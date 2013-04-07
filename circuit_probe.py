@@ -73,7 +73,7 @@ class CircuitProbe:
 		"""
 		return (CircuitProbe.NUM_GPIO > (inputs + states) and inputs > 0 and outputs > 0 and states >= 0)
 
-	def reset(self, inputs = None, outputs = None, states = None, enable_powercycle = False, propogation_time = 0.01):
+	def reset(self, inputs = None, outputs = None, states = None, enable_powercycle = False, propogation_time = 0.01, clock_time = 0.01):
 		"""
 		Resets the CircuitProbe to its base unanalysed state. You can use this to change
 		the number of inputs/outputs/states, if not specified the number of inputs/outputs/states
@@ -111,6 +111,7 @@ class CircuitProbe:
 		# Some internal state stuff
 		self.__powercycle_enabled = enable_powercycle
 		self.__circuit_propogation_time = propogation_time
+		self.__circuit_clock_time = clock_time
 
 	def powercycle(self):
 		"""
@@ -200,9 +201,9 @@ class CircuitProbe:
 		Generates one clock cycle on the output and waits for one propogation_time.
 		"""
 		GPIO.output(CircuitProbe.reserved_pins["clock"], GPIO.HIGH)
-		time.sleep(self.__circuit_propogation_time)
+		time.sleep(self.__circuit_clock_time)
 		GPIO.output(CircuitProbe.reserved_pins["clock"], GPIO.LOW)
-		time.sleep(self.__circuit_propogation_time)
+		time.sleep(self.__circuit_clock_time)
 
 	def test_and_record(self, current_state, test_val):
 		"""
