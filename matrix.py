@@ -10,7 +10,8 @@ class Matrix:
 		self.__init_val = init_val
 
 		# Build a matrix of initial values
-		self.__rows = [[init_val] * j for i in range(row_size)]
+		self.__rows = [[init_val for col in range(column_size)] \
+		                         for row in range(row_size)]
 
 		# # Load in empty data
 		# for i in range(row_size):
