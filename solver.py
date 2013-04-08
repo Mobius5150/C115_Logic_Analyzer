@@ -272,7 +272,8 @@ def test():
 	#print("=> Done: ")
 	print(imp_list_to_string(res, varnames))
 
-test()
+if __name__ == "__main__":
+	test()
 
 
 

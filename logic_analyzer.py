@@ -69,8 +69,8 @@ class GUI():
 
 		self._probe = probe
 
-		self._canvas_x_size = 1000
-		self._canvas_y_size = 500
+		self.default_canvas_x_size = self._canvas_x_size = 1000
+		self.default_canvas_y_size = self._canvas_y_size = 500
 
 		# if canvas is resized, the corners will change
 		self._canvas_x_min = 0
@@ -133,7 +133,7 @@ class GUI():
 
 		self._bit_width = 100
 		self._bit_width_scale = Scale(self._settings_frame,
-			from_=10, to=200, command=on_bit_width_change, orient=HORIZONTAL, length=200, showvalue=0, resolution=5)
+			from_=10, to=500, command=on_bit_width_change, orient=HORIZONTAL, length=200, showvalue=0, resolution=5)
 		self._bit_width_scale.pack(side='right', expand=1)
 		self._bit_width_scale.set(self._bit_width)
 
@@ -281,8 +281,6 @@ class GUI():
 		"""
 		Draws the graph of IO from the CircuitProbe on the canvas.
 		"""
-		print("Begining drawing of IO graph.")
-
 		# Remove any elements from the canvas
 		self._canvas.delete(ALL)
 
@@ -304,14 +302,32 @@ class GUI():
 		row_header_x_space = 5
 		io_graph_base_x = 0
 		io_graph_base_y = 0
-		canvas_x = io_graph_base_x
-		canvas_y = io_graph_base_y
+		
 		row_height = 50
 		bit_size = self._bit_width
 
 		logic_colour = "green"
+		gridline_colour = "blue"
 		row_header_bg_colour = "gray"
 
+		# Resize the canvas to fit the graph
+		x_size = max(self.default_canvas_x_size, row_header_width + (bit_size*matrix.get_num_cols()))
+		y_size = max(self.default_canvas_y_size, row_height * matrix.get_num_rows())
+		self.canvas_resize(x_size, y_size)
+
+		canvas_x = row_header_width
+		canvas_y = 0
+
+		# Paint gridlines
+		while canvas_x < x_size:
+			self._canvas.create_line(canvas_x, canvas_y, canvas_x, y_size, fill=gridline_colour, dash=(2, 4))
+			canvas_x += bit_size
+
+		# Reset canvas x and y
+		canvas_x = io_graph_base_x
+		canvas_y = io_graph_base_y
+
+		# Paint data on the screen
 		row_index = 0
 		for row in matrix:
 			row_type = self._probe.get_type_for_column(row_index)
@@ -353,8 +369,6 @@ class GUI():
 			canvas_x = io_graph_base_x
 			row_index += 1
 
-
-
 	# actions attached to buttons are prefixed with _do_
 	def do_shutdown(self):
 		self._do_shutdown(None)
@@ -366,7 +380,8 @@ class GUI():
 	def _do_reset(self):
 		self._canvas.delete(ALL)
 		self._graph_drawn = False
-		self._probe.power_off()
+		if self._probe:
+			self._probe.power_off()
 
 	def _do_analysis(self):
 		# Clear any current state
@@ -411,7 +426,11 @@ class GUI():
 		print("Acquired data:")
 		print(self._probe.get_matrix())
 
+		# Draw the input graph
 		self.draw_io_graph()
+
+		# Run the simplifier
+			
 
 	def _do_view_stategraph(self):
 		print("_do_view_stategraph not implemented.")
