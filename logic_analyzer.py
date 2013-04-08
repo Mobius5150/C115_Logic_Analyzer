@@ -3,6 +3,7 @@ Main logic analyzer class. Implements the main window GUI.
 """
 
 import random
+import sys
 from circuit_probe import CircuitProbe
 
 from tkinter import *
@@ -93,6 +94,8 @@ class GUI():
 		self._root.wm_title(title)
 		self._root.wm_geometry("+100+80")
 		self._root.bind("<Key-q>", self._do_shutdown)
+		self._root.bind("<Key-a>", self._do_analysis)
+		self._root.bind("<Key-r>", self._do_reset)
 
 		# create a frame on top to hold settings
 		self._settings_frame = Frame(self._root, relief='groove', borderwidth=2)
@@ -375,15 +378,16 @@ class GUI():
 
 	def _do_shutdown(self, ev):
 		print("Program terminated.")
+		sys.exit()
 		# quit()
 
-	def _do_reset(self):
+	def _do_reset(self, ev=None):
 		self._canvas.delete(ALL)
 		self._graph_drawn = False
 		if self._probe:
 			self._probe.power_off()
 
-	def _do_analysis(self):
+	def _do_analysis(self, ev=None):
 		# Clear any current state
 		self._analysis_complete = False
 		self._do_reset()
@@ -490,6 +494,9 @@ class GUI():
 		# now we also have to move all the objects that are off the canvas
 		# into it, or they are in lala land.
 
+	def do_main_loop(self):
+		self._root.mainloop()
+
 
 def rgb_to_color(r, g, b):
 	"""
@@ -508,3 +515,4 @@ def rgb_to_color(r, g, b):
 if __name__ == "__main__":
 	# Run the program
 	gui = GUI()
+	gui.do_main_loop()
