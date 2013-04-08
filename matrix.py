@@ -281,6 +281,15 @@ class Matrix():
 
 		return return_array
 
+	def sort(self, key=None):
+		"""
+		Sorts the matrix using the given key.
+		"""
+		if key is None:
+			raise Exception("Key cannot be null to sort matrix.")
+
+		self.__rows.sort(key=key)
+
 	def get_transposed(self):
 		"""
 		Returns the matrix transposed. Does not modify the matrix itself.

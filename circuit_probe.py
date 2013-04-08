@@ -49,6 +49,49 @@ class CircuitProbe:
 		# Setup the base state
 		self.reset(inputs = inputs, outputs = outputs, states = states, enable_powercycle = enable_powercycle, propogation_time = propogation_time)
 
+	def get_type_for_column(self, col):
+		"""
+		Returns the type string for the column.
+		"""
+		row_type = "Input"
+		if col >= self.__inputs:
+			row_type = "State"
+		if col >= self.__inputs + self.__states:
+			row_type = "Output"
+		if col >= self.__inputs + self.__states + self.__outputs:
+			row_type = "Next State"
+
+		return row_type
+
+	def get_title_for_column(self, col):
+		"""
+		Returns the type string for the column.
+		"""
+		row_var = chr(ord('A') + col)
+		if col >= self.__inputs:
+			row_var = col - self.__inputs
+		if col >= self.__inputs + self.__states:
+			row_var = col - self.__inputs - self.__states
+		if col >= self.__inputs + self.__states + self.__outputs:
+			row_var = col - self.__inputs - self.__states - self.__outputs
+
+		return row_var
+
+	def get_channel_for_column(self, col):
+		"""
+		Returns the GPIO channel number for the column.
+		"""
+		return CircuitProbe.available_pins[col]
+
+	def get_num_inputs(self):
+		return self.__inputs
+
+	def get_num_outputs(self):
+		return self.__outputs
+
+	def get_num_states(self):
+		return self.__states
+
 	def set_debug(self, debug):
 		"""
 		Enables or disables circuit probe debug mode which prints additional output.
@@ -231,6 +274,18 @@ class CircuitProbe:
 		self.matrix.bin_set_row(-1,current_state_bin, self.__states, start_offset = self.__inputs + self.__states + self.__outputs)
 
 		return current_state
+
+	def get_ordered_output_matrix(self):
+		"""
+		Returns a "sorted" copy of the output matrix. Sort is done by circuit inputs and states only. Outputs are not sorted
+		"""
+		# Build "indices for each row"
+		row_index = lambda r: (self.get_numerical_state_representation(r[:self.__inputs]) +
+			(self.get_numerical_state_representation(r[self.__inputs:self.__inputs + self.__states]) * (2**self.__states)))
+		
+		self.matrix.sort(key=row_index)
+
+		return self.matrix
 
 	def get_binary_state_representation(self, num):
 		"""

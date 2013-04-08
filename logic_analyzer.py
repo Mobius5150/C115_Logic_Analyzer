@@ -120,6 +120,23 @@ class GUI():
 		self._add_tk_entry(self._settings_frame, "Propogation Time (seconds):", "propogation time", "0.01", "float", floating_validate_command)
 		self._add_tk_entry(self._settings_frame, "Clock Time (seconds):", "clock time", "0.01", "float", floating_validate_command)
 
+		# Bit width slider
+		def on_bit_width_change(v):
+			self._bit_width = int(v)
+
+			# If the graph is currently being displayed, redraw it
+			if self._graph_drawn:
+				self.draw_io_graph()
+
+		self._bit_width_label = Label(self._settings_frame, text="Bit Width: ")
+		self._bit_width_label.pack(side=LEFT, padx=self._toolbar_pad_x, pady=self._toolbar_pad_y)
+
+		self._bit_width = 100
+		self._bit_width_scale = Scale(self._settings_frame,
+			from_=10, to=200, command=on_bit_width_change, orient=HORIZONTAL, length=200, showvalue=0, resolution=5)
+		self._bit_width_scale.pack(side='right', expand=1)
+		self._bit_width_scale.set(self._bit_width)
+
 		# pack the settings frame
 		self._settings_frame.pack(side=TOP, fill=X)
 
@@ -187,12 +204,14 @@ class GUI():
 
 		self._vscroll.grid(row=0, column=1, sticky='ns')
 
+		self._graph_drawn = False
 		self._canvas = Canvas(self._cf,
 			width=self._canvas_x_size,
 			height=self._canvas_y_size,
 			scrollregion=(0, 0, self._canvas_x_size, self._canvas_y_size),
 			highlightthickness=0,
 			borderwidth=0,
+			background="black",
 			yscrollcommand=self._vscroll.set,
 			xscrollcommand=self._hscroll.set,
 			)
@@ -206,6 +225,10 @@ class GUI():
 			self._canvas_resize(ev.width, ev.height)
 
 		self._canvas.bind( "<Configure>", _do_resize)
+
+		# Finally, set focus to the first input
+		self._entries["inputs"]["entry"].focus_set()
+		self._entries["inputs"]["entry"].selection_range(0, END)
 
 	def _add_tk_entry(self, parent, text, shortname, default, entry_type, validation_command):
 		self._entries[shortname] = {"label": None, "entry":None, "variable": StringVar(), "type": entry_type}
@@ -227,8 +250,10 @@ class GUI():
 
 	def _validate_numerical(self, action, index, value_if_allowed,
 					   prior_value, text, validation_type, trigger_type, widget_name):
-		if len(text) == 0:
+
+		if text == "" or value_if_allowed == "":
 			return True
+		
 		if text in '0123456789':
 			try:
 				int(value_if_allowed)
@@ -240,8 +265,9 @@ class GUI():
 
 	def _validate_floating(self, action, index, value_if_allowed,
 					   prior_value, text, validation_type, trigger_type, widget_name):
-		if len(text) == 0:
+		if text == "" or value_if_allowed == "":
 			return True
+
 		if text in '0123456789.':
 			try:
 				float(value_if_allowed)
@@ -255,9 +281,80 @@ class GUI():
 		"""
 		Draws the graph of IO from the CircuitProbe on the canvas.
 		"""
-		
+		print("Begining drawing of IO graph.")
 
-		
+		# Remove any elements from the canvas
+		self._canvas.delete(ALL)
+
+		self._graph_drawn = True
+
+		# get the sorted matrix as it will be nicer to see
+		# the matrix is much easier to use if it is transposed
+		matrix = self._probe.get_ordered_output_matrix().get_transposed()
+
+		inputs = self._probe.get_num_inputs()
+		outputs = self._probe.get_num_outputs()
+		states = self._probe.get_num_states()
+
+		# Each row now represents all the values for that channel
+		row_header_width = 150
+		row_header_font = "Times "
+		row_header_font_size = 15
+		row_header_y_space = 5
+		row_header_x_space = 5
+		io_graph_base_x = 0
+		io_graph_base_y = 0
+		canvas_x = io_graph_base_x
+		canvas_y = io_graph_base_y
+		row_height = 50
+		bit_size = self._bit_width
+
+		logic_colour = "green"
+		row_header_bg_colour = "gray"
+
+		row_index = 0
+		for row in matrix:
+			row_type = self._probe.get_type_for_column(row_index)
+			row_var = self._probe.get_title_for_column(row_index)
+			row_channel = self._probe.get_channel_for_column(row_index)
+
+			## First print the row heading
+			# Draw the background for the heading 
+			self._canvas.create_rectangle(canvas_x, canvas_y, canvas_x + row_header_width, canvas_y + row_height, fill = row_header_bg_colour)
+
+			# Draw the Input Name
+			self._canvas.create_text(canvas_x + row_header_x_space, canvas_y + row_header_y_space, 
+				text="{} {}".format(row_type, row_var), 
+				anchor="nw", 
+				width=row_header_width,
+				font=row_header_font + str(row_header_font_size))
+
+			# Draw the channel information
+			self._canvas.create_text(canvas_x + row_header_x_space, canvas_y + (2*row_header_y_space) + row_header_font_size, 
+				text="GPIO Channel {}".format(row_channel), 
+				anchor="nw",
+				width=row_header_width,
+				font=row_header_font + str(row_header_font_size))
+
+			canvas_x = row_header_width
+
+			## Now print the logic values for the channel
+			for val in row:
+				# If the value is High, draw a rect. Low, draw a line.
+				if val:
+					self._canvas.create_rectangle(canvas_x, canvas_y, canvas_x + bit_size, canvas_y + row_height, fill = logic_colour)
+				else:
+					self._canvas.create_line(canvas_x + 1, canvas_y + row_height - 1, canvas_x + bit_size, canvas_y + row_height - 1, fill = logic_colour)
+				# Increment canvas x by the width of a byte
+				canvas_x += bit_size
+
+			# Increment canvas y by the row height
+			canvas_y += row_height
+			canvas_x = io_graph_base_x
+			row_index += 1
+
+
+
 	# actions attached to buttons are prefixed with _do_
 	def do_shutdown(self):
 		self._do_shutdown(None)
@@ -267,8 +364,9 @@ class GUI():
 		# quit()
 
 	def _do_reset(self):
-		print("_do_reset not implemented.")
-		pass
+		self._canvas.delete(ALL)
+		self._graph_drawn = False
+		self._probe.power_off()
 
 	def _do_analysis(self):
 		# Clear any current state
@@ -312,6 +410,8 @@ class GUI():
 		print("Analysis Complete with unreachable states: {}".format(unreachable))
 		print("Acquired data:")
 		print(self._probe.get_matrix())
+
+		self.draw_io_graph()
 
 	def _do_view_stategraph(self):
 		print("_do_view_stategraph not implemented.")
