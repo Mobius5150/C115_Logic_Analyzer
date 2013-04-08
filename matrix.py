@@ -2,7 +2,20 @@
 Implements a very simple matrix class with doctests.
 """
 
-class Matrix:
+# Metaclass is used to make the matrix iterable
+# class MatrixMeta(type):
+	
+
+class Matrix():
+	"""
+	>>> M = Matrix(3, 2)
+	>>> M.set_val(0, 0, 1)
+	>>> M.set_val(1, 1, 1)
+	>>> for i in M: i
+	[1, 0]
+	[0, 1]
+	[0, 0]
+	"""
 	def __init__(self, row_size, column_size, init_val=0):
 		self.__column_size = column_size
 		self.__row_size = row_size
@@ -14,6 +27,10 @@ class Matrix:
 
 	def __repr__(self):
 		return self.__str__()
+
+	def __iter__(self):
+		for row in self.__rows:
+			yield row
 
 	def __str__(self):
 		rep = ""
