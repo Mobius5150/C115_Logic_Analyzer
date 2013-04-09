@@ -132,6 +132,16 @@ class GUI():
 			if self._graph_drawn:
 				self.draw_io_graph()
 
+		def on_bit_width_mouse(v):
+			self._mouse_depressed_on_bit_width = True
+
+		def on_bit_width_mouse_release(v):
+			self._mouse_depressed_on_bit_width = False
+
+			if self._graph_drawn:
+				self.draw_io_graph()
+
+		self._mouse_depressed_on_bit_width = False
 		self._bit_width_label = Label(self._settings_frame, text="Bit Width: ")
 		self._bit_width_label.pack(side=LEFT, padx=self._toolbar_pad_x, pady=self._toolbar_pad_y)
 
@@ -140,6 +150,8 @@ class GUI():
 			from_=10, to=500, command=on_bit_width_change, orient=HORIZONTAL, length=200, showvalue=0, resolution=5)
 		self._bit_width_scale.pack(side='right', expand=1)
 		self._bit_width_scale.set(self._bit_width)
+		self._bit_width_scale.bind("<Button-1>", on_bit_width_mouse)
+		self._bit_width_scale.bind("<ButtonRelease-1>", on_bit_width_mouse_release)
 
 		# pack the settings frame
 		self._settings_frame.pack(side=TOP, fill=X)
@@ -190,6 +202,26 @@ class GUI():
 
 		self._b4.pack(anchor='w', fill='x')
 
+		# holds simplification info
+		self._solved = None
+		self._display_solved = True
+
+		def display_solved_changed():
+			self._display_solved = not self._display_solved
+
+			# If the graph was drawn, redraw it
+			if self._graph_drawn:
+				self.draw_io_graph()
+
+		self._b4 = Button(self._frame,
+			text='Toggle Solutions',
+			command=display_solved_changed
+			)
+
+		self._b4.pack(anchor='w', fill='x')
+
+		# Build the canvas frame
+
 		self._cf = Frame(self._root)
 
 		self._cf.pack(side='right', fill='both', expand=1)
@@ -223,7 +255,7 @@ class GUI():
 		self._canvas.grid(column=0, row=0, sticky='nwes')
 
 		self._hscroll.configure( command=self._canvas.xview )
-		self._vscroll.configure( command=self._canvas.yview )
+		self._vscroll.configure( command=self._canvas.yview )	
 
 		def _do_resize(ev):
 			self._canvas_resize(ev.width, ev.height)
@@ -304,6 +336,8 @@ class GUI():
 		row_header_font_size = 15
 		row_header_y_space = 5
 		row_header_x_space = 5
+		row_header_solutions_height = 20
+		solutions_font_size = 15
 		io_graph_base_x = 0
 		io_graph_base_y = 0
 		
@@ -333,14 +367,28 @@ class GUI():
 
 		# Paint data on the screen
 		row_index = 0
+		last_row_type = None
 		for row in matrix:
+
 			row_type = self._probe.get_type_for_column(row_index)
 			row_var = self._probe.get_title_for_column(row_index)
 			row_channel = self._probe.get_channel_for_column(row_index)
 
+			# If this row is at a boundary between channel types, draw a seperator
+			if last_row_type and row_type != last_row_type:
+				canvas_y += 2
+				self._canvas.create_line(canvas_x, canvas_y, 
+					x_size, canvas_y, 
+					fill=row_header_bg_colour, width=2)
+				canvas_y += 1
+			last_row_type = row_type
+
+
 			## First print the row heading
 			# Draw the background for the heading 
-			self._canvas.create_rectangle(canvas_x, canvas_y, canvas_x + row_header_width, canvas_y + row_height, fill = row_header_bg_colour)
+			self._canvas.create_rectangle(canvas_x, canvas_y, 
+				canvas_x + row_header_width, canvas_y + row_height, 
+				fill = row_header_bg_colour)
 
 			# Draw the Input Name
 			self._canvas.create_text(canvas_x + row_header_x_space, canvas_y + row_header_y_space, 
@@ -358,19 +406,41 @@ class GUI():
 
 			canvas_x = row_header_width
 
-			## Now print the logic values for the channel
-			for val in row:
-				# If the value is High, draw a rect. Low, draw a line.
-				if val:
-					self._canvas.create_rectangle(canvas_x, canvas_y, canvas_x + bit_size, canvas_y + row_height, fill = logic_colour)
-				else:
-					self._canvas.create_line(canvas_x + 1, canvas_y + row_height - 1, canvas_x + bit_size, canvas_y + row_height - 1, fill = logic_colour)
-				# Increment canvas x by the width of a byte
-				canvas_x += bit_size
+			if not self._mouse_depressed_on_bit_width:
+				## Now print the logic values for the channel
+				for val in row:
+					# If the value is High, draw a rect. Low, draw a line.
+					if val:
+						self._canvas.create_rectangle(canvas_x, canvas_y, canvas_x + bit_size, canvas_y + row_height, fill = logic_colour)
+					else:
+						self._canvas.create_line(canvas_x + 1, canvas_y + row_height - 1, canvas_x + bit_size, canvas_y + row_height - 1, fill = logic_colour)
+					# Increment canvas x by the width of a byte
+					canvas_x += bit_size
 
 			# Increment canvas y by the row height
 			canvas_y += row_height
 			canvas_x = io_graph_base_x
+
+			# Check if we can/should output the solutions
+			if self._solved and self._display_solved and row_type != "Input":
+				# Draw the solutions
+				self._canvas.create_rectangle(canvas_x, canvas_y, 
+					x_size, canvas_y + row_header_solutions_height, 
+					fill = row_header_bg_colour)
+
+				# Draw a tiny rectangle to connect the top and bottom boxes
+				self._canvas.create_rectangle(canvas_x + 1, canvas_y - 1, 
+					canvas_x + row_header_width, canvas_y + 1, 
+					fill = row_header_bg_colour, outline="")
+
+				self._canvas.create_text(canvas_x + row_header_x_space, canvas_y + (2*row_header_y_space) , 
+					text="{}: {}".format(self._solved[row_index - inputs][0], self._solved[row_index - inputs][1]), 
+					anchor="w",
+					width=x_size,
+					font=row_header_font + str(solutions_font_size))
+
+				canvas_y += row_header_solutions_height
+
 			row_index += 1
 
 	# actions attached to buttons are prefixed with _do_
@@ -385,6 +455,7 @@ class GUI():
 	def _do_reset(self, ev=None):
 		self._canvas.delete(ALL)
 		self._graph_drawn = False
+		self._solved = None
 		if self._probe:
 			self._probe.power_off()
 
@@ -441,7 +512,7 @@ class GUI():
 		next_state_indices = range(vals["inputs"] + vals["states"] + vals["outputs"], vals["inputs"] + (2*vals["states"]) + vals["outputs"])
 
 		# Run the simplifier
-		solved = solve_system(self._probe.get_matrix(), 
+		self._solved = solve_system(self._probe.get_matrix(), 
 			input_indices, 
 			output_indices, 
 			state_indices, 
@@ -451,7 +522,9 @@ class GUI():
 			["State " + str(self._probe.get_title_for_column(index)) for index in state_indices])
 
 		print("Solved matrix:")
-		print(solved)
+		print(self._solved)
+
+		self.draw_io_graph()
 
 
 	def _do_view_stategraph(self):
