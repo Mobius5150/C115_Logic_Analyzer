@@ -15,7 +15,7 @@ import RPi.GPIO as GPIO
 import time
 class CircuitProbe:
 	# Number of available GPIO pins
-	NUM_GPIO = 8
+	NUM_GPIO = 15
 
 	# All of the availble GPIO pins
 	reserved_pins = { "power": 3, "clock": 5 }
@@ -252,20 +252,27 @@ class CircuitProbe:
 		"""
 		Applies a test input to the circuit and record what the output of the circuit becomes 
 		and which state it goes to. Returns the new state.
+
+		Order of operations:
+		Set inputs -> Measure output -> Pulse Clock -> Record Next State
 		"""
 		# Probe the next circuit inputs for this state
 		self.set_inputs(test_val)
 
+		# Wait a propogation time
+		time.sleep(self.__circuit_propogation_time)
+
+		# Record the input/output of the circuit
+		self.matrix.insert_row()
+		self.matrix.bin_set_row(-1,test_val, self.__inputs)
+		self.matrix.bin_set_row(-1,self.get_current_output(), self.__outputs, start_offset = self.__inputs + self.__states)
+
 		# Clock the circuit
 		self.pulse_clock()
 
+		# Record the state we went to
 		current_state_bin = self.get_binary_state_representation(current_state)
-
-		# Record the output of the circuit
-		self.matrix.insert_row()
-		self.matrix.bin_set_row(-1,test_val, self.__inputs)
 		self.matrix.bin_set_row(-1,current_state_bin, self.__states, start_offset = self.__inputs)
-		self.matrix.bin_set_row(-1,self.get_current_output(), self.__outputs, start_offset = self.__inputs + self.__states)
 
 		# Check which state the circuit went to
 		current_state = self.get_numerical_state_representation(self.get_current_state())
@@ -456,7 +463,7 @@ class CircuitProbe:
 			if t_last_state != last_state:
 				if t_last_state not in edges:
 					edges[t_last_state] = [ (base_state, None) ] # Each state can go to the base state by resetting
-				edges[t_last_state].append((last_state, tested[last_state]))
+				edges[t_last_state].append((last_state, tested[t_last_state]))
 				if self.__debug:
 					print("Edges are now: ")
 					print(edges)
@@ -471,11 +478,14 @@ class CircuitProbe:
 			i_state = self.get_binary_state_representation(i)
 
 			# Check if this state has untested inputs
-			if tested[i] != self.__max_input:
+			if i not in tested or tested[i] != self.__max_input:
 				if i not in untested:
 					untested[i] = []
 
 				# State has untested inputs
+				if i not in tested:
+					tested[i] = -1
+
 				for j in range(tested[i] + 1, self.__max_input + 1):
 					untested[i].append(j)
 
@@ -489,7 +499,7 @@ class CircuitProbe:
 
 		# Now attempt to get to each of these test cases
 		while untested:
-			# Check if state has untested inputsif self.__debug:
+			# Check if state has untested inputs
 			if last_state in untested:
 				# The current state has untested inputs, try the next one
 				t_last_state = last_state
