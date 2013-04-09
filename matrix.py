@@ -2,7 +2,20 @@
 Implements a very simple matrix class with doctests.
 """
 
-class Matrix:
+# Metaclass is used to make the matrix iterable
+# class MatrixMeta(type):
+	
+
+class Matrix():
+	"""
+	>>> M = Matrix(3, 2)
+	>>> M.set_val(0, 0, 1)
+	>>> M.set_val(1, 1, 1)
+	>>> for i in M: i
+	[1, 0]
+	[0, 1]
+	[0, 0]
+	"""
 	def __init__(self, row_size, column_size, init_val=0):
 		self.__column_size = column_size
 		self.__row_size = row_size
@@ -10,16 +23,14 @@ class Matrix:
 		self.__init_val = init_val
 
 		# Build a matrix of initial values
-		self.__rows = [[init_val] * j for i in range(row_size)]
-
-		# # Load in empty data
-		# for i in range(row_size):
-		# 	self.__rows.append([])
-		# 	for j in range(column_size):
-		# 		self.__rows[i].append(init_val)
+		self.__rows = [[init_val] * column_size for i in range(row_size)]
 
 	def __repr__(self):
-		return "Matrix()"
+		return self.__str__()
+
+	def __iter__(self):
+		for row in self.__rows:
+			yield row
 
 	def __str__(self):
 		rep = ""
@@ -136,13 +147,33 @@ class Matrix:
 		"""
 		return self.__rows[row]
 
-	def insert_row(self):
+	def insert_row(self, new_row = None):
 		"""
 		Adds a row to the end of the matrix.
+
+		>>> M = Matrix(2, 2)
+		>>> M.insert_row()
+		>>> print(M)
+		[0, 0]
+		[0, 0]
+		[0, 0]
+
+		>>> M.expand(3, 3)
+		>>> M.insert_row()
+		>>> M
+		[0, 0, 0]
+		[0, 0, 0]
+		[0, 0, 0]
+		[0, 0, 0]
 		"""
-		new_row = [self.__init_val for i in range(self.__column_size)]
+		self.__row_size += 1
+		if new_row is None:
+			new_row = [self.__init_val for i in range(self.__column_size)]
+		else:
+			if len(new_row) < self.__column_size:
+				raise Exception("Error: Specified column too small.")
 		
-		self.__rows.insert(row_position, new_row)
+		self.__rows.append(new_row)
 
 
 	def insert_row_at_position(self, row_position, new_row = None):
@@ -167,10 +198,11 @@ class Matrix:
 		"""
 		if new_row is None:
 			new_row = [self.__init_val for i in range(self.__column_size)]
-
-		if len(new_row) < self.__column_size:
-			raise Exception("Error: Specified column too small.")
+		else:
+			if len(new_row) < self.__column_size:
+				raise Exception("Error: Specified column too small.")
 		
+		self.__row_size += 1
 		self.__rows.insert(row_position, new_row)
 
 	def get_column(self, column):
@@ -220,7 +252,7 @@ class Matrix:
 		for i in range(self.__row_size, new_num_rows):
 			self.__rows.append([])
 			for j in range(new_num_columns):
-				self.__rows[i].append(self.__init_val)
+				self.__rows[-1].append(self.__init_val)
 
 		self.__row_size = new_num_rows
 		self.__column_size = new_num_columns
@@ -248,6 +280,43 @@ class Matrix:
 				return_array.append(row)
 
 		return return_array
+
+	def sort(self, key=None):
+		"""
+		Sorts the matrix using the given key.
+		"""
+		if key is None:
+			raise Exception("Key cannot be null to sort matrix.")
+
+		self.__rows.sort(key=key)
+
+	def get_transposed(self):
+		"""
+		Returns the matrix transposed. Does not modify the matrix itself.
+
+		>>> M = Matrix(2, 3)
+		>>> M.set_val(0, 0, 1)
+		>>> M.set_val(1, 1, 1)
+		>>> M.set_val(0, 2, 1)
+		>>> M
+		[1, 0, 1]
+		[0, 1, 0]
+
+		>>> M.get_transposed()
+		[1, 0]
+		[0, 1]
+		[1, 0]
+		"""
+		# Create a matrix with columns and row sizes swapped
+		matrix = Matrix(0, self.__row_size)
+
+		# Begin looping through and making rows
+		for i in range(0, self.__column_size):
+			matrix.insert_row([v[i] for v in self.__rows])
+
+		return matrix
+
+
 
 
 def matrix_generator(inputs=0, states=0, outputs=0):
