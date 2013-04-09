@@ -1,20 +1,16 @@
 
 from solver import *
 
-def slove_system(m, input_i, output_i, state_i, nstate_i, input_n, output_n, state_n):
+def solve_system(m, input_i, output_i, state_i, nstate_i, input_n, output_n, state_n):
 	"""
 	Solve a system with data gathered in the matrix m, and the input / output
 	/ state names / indicies in that matrix specified. 
 	"""
 	# total cols in the matrix to solve
-	ncols = len(input_i)+len(output_i)+len(state_i)
+	ncols = len(input_i)+len(output_i)+len(state_i)*3
 
 	# the new matrix to populate
-	new_m = Matrix(ncols, m.get_num_rows(), 0)
-
-	# output names
-	output_names_by_index = []
-	for in_i in input_i:
+	new_m = Matrix(m.get_num_rows(), ncols, 0)
 
 	# transcribe the rows of the data matrix into the new matrix
 	for row_i in range(m.get_num_rows()):
@@ -37,7 +33,7 @@ def slove_system(m, input_i, output_i, state_i, nstate_i, input_n, output_n, sta
 			newrow.append(row[out_i])
 
 		# then the next state J and K values
-		for ns_i in nstate_i:
+		for ns_i in range(len(nstate_i)):
 			a = row[state_i[ns_i]]
 			b = row[nstate_i[ns_i]]
 			if a == 0 and b == 1:
@@ -57,8 +53,8 @@ def slove_system(m, input_i, output_i, state_i, nstate_i, input_n, output_n, sta
 				newrow.append(EITHER)
 				newrow.append(0)
 
-		# and the next state K values
-		for ns_i in nstate_i:
+		# and add the row
+		new_m.bin_set_row(row_i, newrow, ncols)
 
 
 	# now, we need to gather the results for each output in terms of a set of
@@ -97,7 +93,8 @@ def slove_system(m, input_i, output_i, state_i, nstate_i, input_n, output_n, sta
 		# K input
 		implicant_list = solve_and_or(new_m,
 		                              len(input_i)+len(state_i)+len(output_i)\
-		                              +2*st_i+1)
+		                              +2*st_i+1,
+		                              all_input_index_list)
 		result = imp_list_to_string(implicant_list, all_input_name_list)
 		result_list.append((state_n[st_i]+'_K', result))
 

@@ -251,29 +251,6 @@ def imp_list_to_string(imp_list, var_names):
 	return ' + '.join([imp_to_string(imp, var_names) for imp in imp_list])
 
 
-def test():
-	# inputs
-	func = lambda a,b,c,d: a or not c
-	varnames = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h']
-	nvars = 4
-
-	# build table
-	m = Matrix(2**nvars, nvars+1, 0)
-	for row in range(2**nvars):
-		args = []
-		n = row
-		for i in range(nvars):
-			args.append(n%2 == 1)
-			n >>= 1
-		m.bin_set_row(row, row, nvars)
-		m.set_val(row, nvars, 1 if func(*(args[::-1])) else 0)
-
-	#print(m)
-
-	res = solve_and_or(m, nvars, [x for x in range(nvars)])
-	#print("=> Done: ")
-	print(imp_list_to_string(res, varnames))
-
 if __name__ == "__main__":
 	test()
 
