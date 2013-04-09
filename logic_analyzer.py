@@ -5,6 +5,7 @@ Main logic analyzer class. Implements the main window GUI.
 import random
 import sys
 from circuit_probe import CircuitProbe
+from solve import solve_system
 
 from tkinter import *
 import tkinter.messagebox as MessageBox
@@ -433,8 +434,25 @@ class GUI():
 		# Draw the input graph
 		self.draw_io_graph()
 
+		# Build index lists for the solver
+		input_indices = range(0, vals["inputs"])
+		output_indices = range(vals["inputs"] + vals["states"], vals["inputs"] + vals["states"] + vals["outputs"])
+		state_indices = range(vals["inputs"], vals["inputs"] + vals["states"])
+		next_state_indices = range(vals["inputs"] + vals["states"] + vals["outputs"], vals["inputs"] + (2*vals["states"]) + vals["outputs"])
+
 		# Run the simplifier
-			
+		solved = solve_system(self._probe.get_matrix(), 
+			input_indices, 
+			output_indices, 
+			state_indices, 
+			next_state_indices, 
+			[self._probe.get_title_for_column(index) for index in input_indices], 
+			["Output " + str(self._probe.get_title_for_column(index)) for index in output_indices],
+			["State " + str(self._probe.get_title_for_column(index)) for index in state_indices])
+
+		print("Solved matrix:")
+		print(solved)
+
 
 	def _do_view_stategraph(self):
 		print("_do_view_stategraph not implemented.")

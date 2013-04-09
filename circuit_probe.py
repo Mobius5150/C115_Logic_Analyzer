@@ -223,9 +223,9 @@ class CircuitProbe:
 		output_list = []
 
 		for i in range(self.__outputs):
-			output_list.append(GPIO.input(CircuitProbe.available_pins[self.__outputs + self.__states + i]))
+			output_list.append(GPIO.input(CircuitProbe.available_pins[self.__inputs + self.__states + i]))
 			if self.__debug:
-				print("Pin {} output: {}".format(CircuitProbe.available_pins[self.__outputs + self.__states + i], output_list[-1]))
+				print("Pin {} output: {}".format(CircuitProbe.available_pins[self.__inputs + self.__states + i], output_list[-1]))
 
 		return output_list
 
