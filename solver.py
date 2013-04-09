@@ -223,6 +223,212 @@ def solve_and_or(m, output_index, input_index_list):
 	return imp_list
 
 
+def imp_list_to_ast(imp_list):
+	"""
+	Convert a list of essential prime implicants from the into an AST that can 
+	be further simplified. 
+	"""
+	sumnode = ['+']
+	for imp in imp_list:
+		productnode = ['*']
+		for i, val in enumerate(imp.Values):
+			if val == ONE:
+				productnode.append(['V', i])
+			elif val == ZERO:
+				productnode.append(['~', ['V', i]])
+			else:
+				pass # nothing to do
+		if len(productnode) > 1:
+			sumnode.append(productnode)
+		else:
+			sumnode.append(['K', 0])
+	if len(sumnode) > 0:
+		return sumnode
+	else:
+		return ['K', 1]
+
+
+def _count_vars(astnode):
+	"""
+
+	"""
+	if astnode[0] == '+' or astnode[0] == '*':
+		count = 0
+		for i in range(1,len(astnode)):
+			count += _count_vars(astnode[i])
+		return count
+	elif astnode[0] == '~':
+		if astnode[1][0] == 'V':
+			return 1
+		else:
+			return _count_vars(astnode[1])
+	elif astnode[0] == 'V':
+		return 1
+	else:
+		return 0
+
+
+def _ast_equiv(nd1, nd2):
+	if nd1[0] == 'V':
+		if nd2[0] == 'V':
+			return nd1[1] == nd2[1]
+		else:
+			return False
+	if len(nd1) != len(nd2):
+		return False
+	if nd1[0] != nd2[0]:
+		return False
+	n1,n2 = sorted(nd1), sorted(nd2)
+	for i in range(1,len(nd1)):
+		if not _ast_equiv(n1[i], n2[i]):
+			return False
+	return True
+
+
+def _ast_size(astnode):
+	"""
+	Get the visual size of an AST node
+
+	"""
+	#TODO
+	return 0
+
+
+def _ast_children(astnode):
+	for i in range(1, len(astnode)):
+		yield i, astnode[i]
+
+
+def _simplify_sum(sumnode):
+	"""
+	Simplify a sum by pulling out sets of factors from terms. For example:
+	ac + ad + bc + bd
+	=>
+	a(c+d) + b(c+d)
+	=>
+	(a+b)(c+d)
+	"""
+	best_term_index = None
+	best_term_factors = None
+	best_term_tojoinwith = None
+	best_comb_heuristic = 0
+	num_candidates = 0
+	for term_inx, this_term in _ast_children(sumnode):
+		# for each var factor the term, see how many other terms share it
+		shares_per_factor = []
+		if this_term[0] == '*':
+			# factor, pull out terms
+			for factor_inx, factor in _ast_children(this_term):
+				# set of terms which share this factor
+				sharing_terms = set()
+				for otherterm_inx in range(term_inx+1, len(sumnode)):
+					other_term = sumnode[otherterm_inx]
+					for otherfac_inx, otherfac in _ast_children(other_term):
+						if _ast_equiv(factor, otherfac):
+							# are equivalent, add to shared set
+							sharing_terms.add(otherterm_inx)
+				# add the shares to the list of shares for the term, as long 
+				# as there are at least two terms sharing this factor
+				if len(sharing_terms) > 0:
+					shares_per_factor.append((factor_inx, sharing_terms))
+		else:
+			# not a factor. Ignore it
+			pass
+
+		# now, look at all the combinations of shares and see which is the 
+		# best var to pull out for this term, if there is one to pull out.
+		for i in range(1, len(this_term)-1):
+			# look for the best set of elements of that size
+			for comb in itertools.combinations(shares_per_factor, i):
+				total_intersection = comb[0][1]
+				for factor_inx, sharing_terms in comb:
+					total_intersection = \
+						total_intersection.intersection(sharing_terms)
+				# if there is an intersection between two or more terms, see
+				# if it is the best intersection we've found so far
+				if len(total_intersection) > 0:
+					# hueristic is the number of vars we can pull out, times
+					# the number of terms it can be pulled out of.
+					if len(total_intersection)*i >= best_comb_heuristic:
+						best_term_index = term_inx
+						best_term_factors = [i for i,_ in comb]
+						best_term_tojoinwith = [t for t in total_intersection]
+						best_comb_heuristic = len(total_intersection)*i
+						num_candidates += 1
+	result = None
+
+	if num_candidates > 0:
+		# now we have a best combination to join. Do the join
+		# get things
+		base_term = sumnode[best_term_index]
+		join_with = best_term_tojoinwith
+		join_with.append(best_term_index)
+		factors_to_pull = [fac for i,fac \
+		                       in _ast_children(base_term) \
+		                       if i in best_term_factors]
+
+		# now pull factors out
+		for term_inx in join_with:
+			term = sumnode[term_inx]
+
+			#now remove the values from the terms
+			new_term = ['*']
+			for _,current_fac in _ast_children(term):
+				for fac_to_rem in factors_to_pull:
+					if _ast_equiv(current_fac, fac_to_rem):
+						break
+				else:
+					new_term.append(current_fac)
+
+			#add the new term
+			if len(new_term) == 2:
+				# product of one factor
+				sumnode[term_inx] = new_term[1]
+			else:
+				sumnode[term_inx] = new_term
+
+		# make a new term with all the joined terms
+		main_new_term = ['+']
+		factor_part = ['*']
+		factored_terms = ['+']
+		main_new_term.append(factor_part)
+		for fac in factors_to_pull:
+			factor_part.append(fac)
+		factor_part.append(factored_terms)
+
+		for i,term in _ast_children(sumnode):
+			if i in join_with:
+				factored_terms.append(term)
+			else:
+				main_new_term.append(term)
+
+		print(factor_part[-1])
+		factor_part[-1] = _simplify_sum(factor_part[-1])
+
+		if len(main_new_term) == 2:
+			#sum of 1 elements
+			result = main_new_term[1]
+		else:
+			result = main_new_term
+	else:
+		result = sumnode
+
+	if num_candidates > 1:
+		print("More candidates")
+		result = _simplify_sum(result)
+
+	return result
+
+
+
+def simplify_ast(ast):
+	"""
+
+	"""
+	return _simplify_sum(ast)
+
+
+
 def imp_to_string(imp, var_names):
 	"""
 	Gives the string formatting of an implicant.
@@ -252,7 +458,12 @@ def imp_list_to_string(imp_list, var_names):
 
 
 if __name__ == "__main__":
-	test()
+	print(simplify_ast(['+', ['*', ['V', 0], ['V', 2]], \
+		                     ['*', ['V', 0], ['V', 3]], \
+		                     ['*', ['V', 1], ['V', 2]], \
+		                     ['*', ['V', 1], ['V', 3]]  ]))
+	# import doctest
+	# doctest.testmod()
 
 
 
