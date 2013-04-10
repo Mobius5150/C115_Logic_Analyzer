@@ -226,8 +226,13 @@ def solve_and_or(m, output_index, input_index_list):
 def imp_list_to_ast(imp_list):
 	"""
 	Convert a list of essential prime implicants from the into an AST that can 
-	be further simplified. 
+	be further simplified via factoring out of common terms.
 	"""
+	if not imp_list:
+		#empty implicant list => 0 constant value
+		return ['K', 0]
+
+	# build a sum node of the essential prime implicants
 	sumnode = ['+']
 	for imp in imp_list:
 		productnode = ['*']
@@ -241,11 +246,14 @@ def imp_list_to_ast(imp_list):
 		if len(productnode) > 1:
 			sumnode.append(productnode)
 		else:
-			sumnode.append(['K', 0])
-	if len(sumnode) > 0:
-		return sumnode
+			# empty product = 1
+			sumnode.append(['K', 1])
+
+	if len(sumnode) == 2:
+		# only one term? Just return the term
+		return sumnode[1]
 	else:
-		return ['K', 1]
+		return sumnode
 
 
 def _count_vars(astnode):
@@ -278,8 +286,8 @@ def _ast_equiv(nd1, nd2):
 		return False
 	if nd1[0] != nd2[0]:
 		return False
-	n1,n2 = sorted(nd1), sorted(nd2)
-	for i in range(1,len(nd1)):
+	n1,n2 = sorted(nd1[1:]), sorted(nd2[1:])
+	for i in range(len(n1)):
 		if not _ast_equiv(n1[i], n2[i]):
 			return False
 	return True
@@ -308,11 +316,16 @@ def _simplify_sum(sumnode):
 	=>
 	(a+b)(c+d)
 	"""
+	# first make sure this is a sum node
+	if sumnode[0] != '+':
+		return sumnode
+
 	best_term_index = None
 	best_term_factors = None
 	best_term_tojoinwith = None
 	best_comb_heuristic = 0
 	num_candidates = 0
+	#print("Term:")
 	for term_inx, this_term in _ast_children(sumnode):
 		# for each var factor the term, see how many other terms share it
 		shares_per_factor = []
@@ -327,6 +340,7 @@ def _simplify_sum(sumnode):
 						if _ast_equiv(factor, otherfac):
 							# are equivalent, add to shared set
 							sharing_terms.add(otherterm_inx)
+							print(factor, otherfac)
 				# add the shares to the list of shares for the term, as long 
 				# as there are at least two terms sharing this factor
 				if len(sharing_terms) > 0:
@@ -334,6 +348,8 @@ def _simplify_sum(sumnode):
 		else:
 			# not a factor. Ignore it
 			pass
+
+		# print("Shares: ", shares_per_factor)
 
 		# now, look at all the combinations of shares and see which is the 
 		# best var to pull out for this term, if there is one to pull out.
@@ -357,6 +373,7 @@ def _simplify_sum(sumnode):
 						num_candidates += 1
 	result = None
 
+
 	if num_candidates > 0:
 		# now we have a best combination to join. Do the join
 		# get things
@@ -366,6 +383,12 @@ def _simplify_sum(sumnode):
 		factors_to_pull = [fac for i,fac \
 		                       in _ast_children(base_term) \
 		                       if i in best_term_factors]
+
+		# print("Do simplify on: %s" % ast_to_string(sumnode, ['a', 'b', 'i']))
+		# print(join_with)
+		# print("Pull:")
+		# for x in factors_to_pull:
+		# 	print(ast_to_string(x, ['a', 'b', 'i']))
 
 		# now pull factors out
 		for term_inx in join_with:
@@ -402,7 +425,6 @@ def _simplify_sum(sumnode):
 			else:
 				main_new_term.append(term)
 
-		print(factor_part[-1])
 		factor_part[-1] = _simplify_sum(factor_part[-1])
 
 		if len(main_new_term) == 2:
@@ -413,8 +435,7 @@ def _simplify_sum(sumnode):
 	else:
 		result = sumnode
 
-	if num_candidates > 1:
-		print("More candidates")
+	if num_candidates > 0:
 		result = _simplify_sum(result)
 
 	return result
@@ -436,7 +457,7 @@ def ast_to_string(ast, var_names):
 	elif ast[0] == '*':
 		strs = []
 		for _,ch in _ast_children(ast):
-			if ch[0] == 'V' or ch[0] == 'K':
+			if ch[0] == 'V' or ch[0] == 'K' or ch[0] == '~':
 				strs.append(ast_to_string(ch, var_names))
 			else:
 				strs.append('(%s)' % ast_to_string(ch, var_names))
