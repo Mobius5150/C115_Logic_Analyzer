@@ -54,8 +54,8 @@ def solve_system(m, input_i, output_i, state_i, nstate_i, input_n, output_n, sta
 				newrow.append(0)
 
 		# and add the row
-		new_m.bin_set_row(row_i, newrow, ncols)
-
+		for i,v in enumerate(newrow):
+			new_m.set_val(row_i, i, v)
 
 	# now, we need to gather the results for each output in terms of a set of
 	# input and current state.

@@ -429,6 +429,33 @@ def simplify_ast(ast):
 
 
 
+def ast_to_string(ast, var_names):
+	if ast[0] == '+':
+		return ' + '.join([ast_to_string(ast[n], var_names) 
+			               for n in range(1,len(ast))])
+	elif ast[0] == '*':
+		strs = []
+		for _,ch in _ast_children(ast):
+			if ch[0] == 'V' or ch[0] == 'K':
+				strs.append(ast_to_string(ch, var_names))
+			else:
+				strs.append('(%s)' % ast_to_string(ch, var_names))
+		return ''.join(strs)
+	elif ast[0] == '~':
+		if ast[1][0] == 'V' or ast[1][0] == 'K':
+			return ast_to_string(ast[1], var_names) + "'"
+		else:
+			return "(%s)'" % ast_to_string(ast[1], var_names)
+	elif ast[0] == 'V':
+		return var_names[ast[1]]
+	elif ast[0] == 'K':
+		return str(ast[1])
+	else:
+		raise Exception('Bad ast entry')
+
+
+
+
 def imp_to_string(imp, var_names):
 	"""
 	Gives the string formatting of an implicant.
@@ -458,10 +485,10 @@ def imp_list_to_string(imp_list, var_names):
 
 
 if __name__ == "__main__":
-	print(simplify_ast(['+', ['*', ['V', 0], ['V', 2]], \
-		                     ['*', ['V', 0], ['V', 3]], \
-		                     ['*', ['V', 1], ['V', 2]], \
-		                     ['*', ['V', 1], ['V', 3]]  ]))
+	print(ast_to_string(simplify_ast(['+', ['*', ['V', 0], ['V', 2]], \
+		                             ['*', ['V', 0], ['V', 3]], \
+		                             ['*', ['V', 1], ['V', 2]], \
+		                             ['*', ['V', 1], ['V', 3]]  ]), ['a', 'b', 'c', 'd']))
 	# import doctest
 	# doctest.testmod()
 
