@@ -72,14 +72,6 @@ def solve_system(m, input_i, output_i, state_i, nstate_i, input_n, output_n, sta
 		all_input_name_list.append(state_n[i])
 		all_input_index_list.append(len(input_i) + i)
 
-	# first get the outputs in terms of the inputs
-	for out_i in range(len(output_i)):
-		implicant_list = solve_and_or(new_m, 
-		                              len(input_i)+len(state_i)+out_i,
-		                              all_input_index_list)
-		result = imp_list_to_string(implicant_list, all_input_name_list)
-		result_list.append((output_n[out_i], result))
-
 	# then get the next-state JK inputs
 	for st_i in range(len(state_i)):
 		# J input
@@ -97,6 +89,14 @@ def solve_system(m, input_i, output_i, state_i, nstate_i, input_n, output_n, sta
 		                              all_input_index_list)
 		result = imp_list_to_string(implicant_list, all_input_name_list)
 		result_list.append((state_n[st_i]+'_K', result))
+
+	# first get the outputs in terms of the inputs
+	for out_i in range(len(output_i)):
+		implicant_list = solve_and_or(new_m, 
+		                              len(input_i)+len(state_i)+out_i,
+		                              all_input_index_list)
+		result = imp_list_to_string(implicant_list, all_input_name_list)
+		result_list.append((output_n[out_i], result))
 
 	# and return that result list
 	return result_list

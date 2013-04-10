@@ -365,6 +365,10 @@ class GUI():
 		canvas_x = io_graph_base_x
 		canvas_y = io_graph_base_y
 
+		# Make a copy of solved
+		if self._solved:
+			solved = [s for s in self._solved]
+
 		# Paint data on the screen
 		row_index = 0
 		last_row_type = None
@@ -422,24 +426,47 @@ class GUI():
 			canvas_x = io_graph_base_x
 
 			# Check if we can/should output the solutions
-			if self._solved and self._display_solved and row_type != "Input":
-				# Draw the solutions
-				self._canvas.create_rectangle(canvas_x, canvas_y, 
-					x_size, canvas_y + row_header_solutions_height, 
-					fill = row_header_bg_colour)
+			if self._solved and self._display_solved and (row_type == "Output" or row_type == "State"):
+				if row_type == "Output":
+					# Draw the solutions
+					self._canvas.create_rectangle(canvas_x, canvas_y, 
+						x_size, canvas_y + row_header_solutions_height, 
+						fill = row_header_bg_colour)
 
-				# Draw a tiny rectangle to connect the top and bottom boxes
-				self._canvas.create_rectangle(canvas_x + 1, canvas_y - 1, 
-					canvas_x + row_header_width, canvas_y + 1, 
-					fill = row_header_bg_colour, outline="")
+					# Draw a tiny rectangle to connect the top and bottom boxes
+					self._canvas.create_rectangle(canvas_x + 1, canvas_y - 1, 
+						canvas_x + row_header_width, canvas_y + 1, 
+						fill = row_header_bg_colour, outline="")
 
-				self._canvas.create_text(canvas_x + row_header_x_space, canvas_y + (2*row_header_y_space) , 
-					text="{}: {}".format(self._solved[row_index - inputs][0], self._solved[row_index - inputs][1]), 
-					anchor="w",
-					width=x_size,
-					font=row_header_font + str(solutions_font_size))
+					self._canvas.create_text(canvas_x + row_header_x_space, canvas_y + (2*row_header_y_space) , 
+						text="{}: {}".format(solved[0][0], solved[0][1]), 
+						anchor="w",
+						width=x_size,
+						font=row_header_font + str(solutions_font_size))
 
-				canvas_y += row_header_solutions_height
+					canvas_y += row_header_solutions_height
+					solved.remove(solved[0])
+				elif row_type == "State":
+					# Draw the solutions
+					self._canvas.create_rectangle(canvas_x, canvas_y, 
+						x_size, canvas_y + 2*row_header_solutions_height, 
+						fill = row_header_bg_colour)
+
+					# Draw a tiny rectangle to connect the top and bottom boxes
+					self._canvas.create_rectangle(canvas_x + 1, canvas_y - 1, 
+						canvas_x + row_header_width, canvas_y + 1, 
+						fill = row_header_bg_colour, outline="")
+
+					for i in range(2):
+						self._canvas.create_text(canvas_x + row_header_x_space, canvas_y + (2*row_header_y_space) , 
+							text="{}: {}".format(solved[0][0], solved[0][1]), 
+							anchor="w",
+							width=x_size,
+							font=row_header_font + str(solutions_font_size))
+
+						canvas_y += row_header_solutions_height
+						solved.remove(solved[0])
+
 
 			row_index += 1
 

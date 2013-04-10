@@ -141,10 +141,16 @@ class CircuitProbe:
 				print("Setting channel {} as circuit input.".format(i))
 			GPIO.setup(i, GPIO.OUT, initial=GPIO.LOW)
 
-		# Configure outputs
-		for i in CircuitProbe.available_pins[self.__inputs:(self.__inputs + self.__states + self.__outputs)]:
+		# Configure states
+		for i in CircuitProbe.available_pins[self.__inputs:(self.__inputs + self.__states)]:
 			if self.__debug:
-				print("Setting channel {} as circuit output/state.".format(i))
+				print("Setting channel {} as circuit state.".format(i))
+			GPIO.setup(i, GPIO.IN)
+
+		# Configure outputs
+		for i in CircuitProbe.available_pins[(self.__inputs + self.__states):(self.__inputs + self.__states + self.__outputs)]:
+			if self.__debug:
+				print("Setting channel {} as circuit output".format(i))
 			GPIO.setup(i, GPIO.IN)
 
 		# Initialize the matrix for holding values
@@ -212,7 +218,8 @@ class CircuitProbe:
 		"""
 		state_list = []
 		for i in range(self.__states):
-			state_list.append(bool(GPIO.input(CircuitProbe.available_pins[self.__outputs + i])))
+			state_list.append(bool(GPIO.input(CircuitProbe.available_pins[self.__inputs + i])))
+			print("Output on: {} is {}".format(CircuitProbe.available_pins[self.__inputs + i], state_list[-1]))
 
 		return state_list
 
@@ -262,23 +269,25 @@ class CircuitProbe:
 		# Wait a propogation time
 		time.sleep(self.__circuit_propogation_time)
 
+		# Record the state we're in
+		current_state_bin = self.get_binary_state_representation(current_state)
+
 		# Record the input/output of the circuit
 		self.matrix.insert_row()
 		self.matrix.bin_set_row(-1,test_val, self.__inputs)
+		self.matrix.bin_set_row(-1,current_state_bin, self.__states, start_offset = self.__inputs)
 		self.matrix.bin_set_row(-1,self.get_current_output(), self.__outputs, start_offset = self.__inputs + self.__states)
 
 		# Clock the circuit
 		self.pulse_clock()
 
 		# Record the state we went to
-		current_state_bin = self.get_binary_state_representation(current_state)
-		self.matrix.bin_set_row(-1,current_state_bin, self.__states, start_offset = self.__inputs)
 
 		# Check which state the circuit went to
 		current_state = self.get_numerical_state_representation(self.get_current_state())
 
 		# Record the state in the matrix
-		self.matrix.bin_set_row(-1,current_state_bin, self.__states, start_offset = self.__inputs + self.__states + self.__outputs)
+		self.matrix.bin_set_row(-1,current_state, self.__states, start_offset = self.__inputs + self.__states + self.__outputs)
 
 		return current_state
 
@@ -519,7 +528,10 @@ class CircuitProbe:
 					untested[last_state] += 1
 			else:
 				# This state has no untested inputs, pathfind to the closest state with untested inputs
-				pass
+				closest = self.get_closest_untested_state(untested, last_state, base_state, edges)
+
+				print("Closest state: {}".format(closest))
+				return
 
 		self.power_off()
 		return untested
