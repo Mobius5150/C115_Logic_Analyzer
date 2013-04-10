@@ -6,9 +6,11 @@ import random
 import sys
 from circuit_probe import CircuitProbe
 from solve import solve_system
+from digraph import Digraph
 
 from tkinter import *
 import tkinter.messagebox as MessageBox
+import subprocess
 # from bitflag import BitFlag
 
 
@@ -480,6 +482,7 @@ class GUI():
 		# quit()
 
 	def _do_reset(self, ev=None):
+		self._analysis_complete = False
 		self._canvas.delete(ALL)
 		self._graph_drawn = False
 		self._solved = None
@@ -553,10 +556,48 @@ class GUI():
 
 		self.draw_io_graph()
 
+		self._analysis_complete = True
+
 
 	def _do_view_stategraph(self):
-		print("_do_view_stategraph not implemented.")
-		pass
+		"""
+		Generates a stategraph of analyzed data.
+		"""
+		# Check if the analysis is complete
+		if not self._analysis_complete:
+			print("No data to generate stategraph from!")
+			return
+
+		if self._probe.get_num_states == 0:
+			print("Cannot draw a stategraph of a non-stateful graph!")
+			return
+
+		print("Building stategraph")
+
+		inputs = self._probe.get_num_inputs()
+		outputs = self._probe.get_num_outputs()
+		states = self._probe.get_num_states()
+
+		# Build the edges for the graph
+		print("Compiling edges")
+		m = self._probe.get_matrix()
+		edges = [
+				(self._probe.get_numerical_state_representation(row[inputs:(inputs+states)]),
+				 self._probe.get_numerical_state_representation(row[(inputs+states+outputs):(inputs+2*states+outputs)]))
+			for row in m
+			]
+
+		# Create a digraph to use
+		print("Creating Digraph")
+		graph = Digraph(edges)
+
+		# Draw the graph into a dot file
+		print("Creating dotfile")
+		graph.draw(filename="stategraph.dot")
+
+		# Run graphviz on the dotfile
+		print("Launching xdot")
+		subprocess.Popen(["xdot", "stategraph.dot"])
 
 	def _do_power_on(self):
 		if self._probe:
