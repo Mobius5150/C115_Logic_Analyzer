@@ -202,16 +202,6 @@ class CircuitProbe:
 	def get_matrix(self):
 		return self.matrix
 
-	def get_to_state(self, state):
-		"""
-		Attempts to pathfind from the current circuit state to the desired state.
-
-		Usage:
-		CP.get_to_state([0, 1]) # Goes to state 01
-		"""
-		print("Get_to_state not implemented")
-		pass
-
 	def get_current_state(self):
 		"""
 		Checks the state probes to determine what state the circuit is currently in and returns a state list
@@ -389,7 +379,7 @@ class CircuitProbe:
 		queue = { current_state: 0, base_state: 1 }
 
 	    # List of previous nodes
-		previous = {}
+		previous = { 0: None }
 
 		while queue:
 			# Get the item with min cost in the queue
@@ -403,8 +393,13 @@ class CircuitProbe:
 				# Walk backwards in history until we get to the source node
 				path = [ currentElement ]
 				while path[-1] != current_state:
+					# None is the shortcut for powercycling the circuit
+					if path[-1] is None:
+						break
+
 					# Use path.append for speed and reverse later
-					path.append( previous[ path[-1] ] )
+					path.append( previous[ 
+						path[-1] ] )
 
 				# The path is now backwards, reverse and return
 				path.reverse()
@@ -435,8 +430,9 @@ class CircuitProbe:
 
 		tested = {}
 
-		# Turn on the circuit and check its base state.
+		# Power cycle the circuit and check its base state
 		self.power_on()
+		self.powercycle()
 		last_state = base_state = self.get_numerical_state_representation(self.get_current_state())
 		if self.__debug:
 			print("Circuit base state: {}".format(base_state))
@@ -493,10 +489,12 @@ class CircuitProbe:
 
 				# State has untested inputs
 				if i not in tested:
-					tested[i] = -1
+					untested[i] = 0
+				else:
+					untested[i] = tested[i]
 
-				for j in range(tested[i] + 1, self.__max_input + 1):
-					untested[i].append(j)
+				# for j in range(tested[i] + 1, self.__max_input + 1):
+				# 	untested[i].append(j)
 
 		if self.__debug:
 			print("Untested states for part 2: {}".format(untested))
@@ -519,22 +517,57 @@ class CircuitProbe:
 					if t_last_state not in edges:
 						edges[t_last_state] = [ (base_state, None) ] # Each state can go to the base state by resetting
 
-					edges(t_last_state).append((last_state, tested[last_state]))
+					edges[t_last_state].append((last_state, tested[last_state]))
 
 				# Check if this was the last untested input for the state and remove if yes
-				if untested[last_state] == self.__max_input:
-					untested.pop(last_state)
+				if untested[t_last_state] == self.__max_input:
+					untested.pop(t_last_state)
 				else: 
-					untested[last_state] += 1
+					untested[t_last_state] += 1
 			else:
 				# This state has no untested inputs, pathfind to the closest state with untested inputs
-				closest = self.get_closest_untested_state(untested, last_state, base_state, edges)
+				path_to_closest = self.get_closest_untested_state(untested, last_state, base_state, edges)
+				print("Closest state: {}".format(path_to_closest))
 
-				print("Closest state: {}".format(closest))
-				return
+				# None indicates there is no path to any state we need to check
+				if path_to_closest is None:
+					break
+
+				# The force is strong here... This path we should follow...
+				# follow_path(path_to_closest)
+				for i in path_to_closest:
+					# For each direction, apply the needed input and check where we are
+					if i is None:
+						# None indicates a powercycle is needed
+						self.powercycle()
+					else:
+						# Get the input thats going to go from this state to the next
+						required_input = [e[1] for e in edges if e[0] == i][0]
+
+						print("Required Input: {}".format(required_input))
+
+						# Set the inputs and pulse the clock to go!
+						self.set_inputs(required_input)
+						self.pulse_clock()
+
+					last_state = self.get_numerical_state_representation(self.get_current_state())
+					if last_state in untested:
+						# If the current state has untested stuff, break free!
+						print("State found!")
+						break
+
+		# If we made it this far, then we most likely introduced duplicate rows in the matrix.
+		self.matrix.remove_duplicate_rows()
 
 		self.power_off()
 		return untested
+
+	def follow_path_to_state(self, path, desired_state):
+		"""
+		Follows the given path to the desired state
+		"""
+		print("Get_to_state not implemented")
+		pass
 
 if __name__ == "__main__":
 	# Disable debug mode
