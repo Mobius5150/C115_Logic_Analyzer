@@ -600,54 +600,60 @@ def simplify_ast(ast):
 
 def _sort_and_flatten_ast(node):
 	t = node[0]
+	result = None
 	if t == '*':
+		result = (node, 1000)
+		total_cost = 0
 		new_node = []
-		total_complexity = 0
-		for i,ch in _ast_children(node):
+		for i, ch in _ast_children(node):
 			if ch[0] == '*':
-				ch,_ = _sort_and_flatten_ast(ch)
-				for ii, chh in _ast_children(ch):
-					res = _sort_and_flatten_ast(chh)
-					total_complexity += res[1]
-					new_node.append(res)				
+				res,cost = _sort_and_flatten_ast(ch)
+				total_cost += cost
+				for ii, chh in _ast_children(res):
+					_,cost = _sort_and_flatten_ast(ch)
+					new_node.append((chh,cost))
 			else:
-				res = _sort_and_flatten_ast(ch)
-				total_complexity += res[1]
-				new_node.append(res)
+				res,cost = _sort_and_flatten_ast(ch)
+				total_cost += cost
+				new_node.append((res,cost))
 		new_node.sort(key = lambda x: x[1])
 		new_node = [x[0] for x in new_node]
-		return new_node
+		new_node.insert(0,'*')
+		result = (new_node, total_cost)
 
 	elif t == '+':
+		result = (node, 1000)
+		total_cost = 0
 		new_node = []
-		total_complexity = 0
-		for i,ch in _ast_children(node):
+		for i, ch in _ast_children(node):
 			if ch[0] == '+':
-				ch,_ = _sort_and_flatten_ast(ch)
-				for ii, chh in _ast_children(ch):
-					res = _sort_and_flatten_ast(chh)
-					total_complexity += res[1]
-					new_node.append(res)				
+				res,cost = _sort_and_flatten_ast(ch)
+				total_cost += cost
+				for ii, chh in _ast_children(res):
+					_,cost = _sort_and_flatten_ast(ch)
+					new_node.append((chh,cost))
 			else:
-				res = _sort_and_flatten_ast(ch)
-				total_complexity += res[1]
-				new_node.append(res)
+				res,cost = _sort_and_flatten_ast(ch)
+				total_cost += cost
+				new_node.append((res,cost))
 		new_node.sort(key = lambda x: x[1])
 		new_node = [x[0] for x in new_node]
-		return new_node
+		new_node.insert(0,'+')
+		result = (new_node, total_cost)
 
 	elif t == '~':
 		new_node = ['~']
 		res,cost = _sort_and_flatten_ast(node[1])
 		new_node.append(res)
-		return new_node,cost
+		result = (new_node, cost)
 
 	elif t == 'V':
-		return node, 1000+node[1]
+		result = (node, 1000+node[1])
 
 	elif t == 'K':
-		pass
+		result = (node, 1000)
 
+	return result
 
 
 
@@ -656,7 +662,7 @@ def sort_and_flatten_ast(ast):
 	Sort and flatten sorts an AST into least complexity, lexographical order,
 	as well as flattening terms like: ((a + b) + c) into (a + b + c)
 	"""
-
+	return _sort_and_flatten_ast(ast)[0]
 
 
 
