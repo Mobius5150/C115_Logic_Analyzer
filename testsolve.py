@@ -7,6 +7,10 @@ Unit testing to make sure that the solver runs right during development.
 """
 
 def test_function(f, inputcount):
+	"""
+	Analyse a given function with a single output, and print the 
+	resulting simplification
+	"""
 	M = Matrix(2**inputcount, inputcount+1)
 	for row in range(2**inputcount):
 		args = []
@@ -21,7 +25,6 @@ def test_function(f, inputcount):
 
 	o = solve_system(M, [x for x in range(inputcount)], [inputcount], [], [],
 		                ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'], ['X'], [])
-
 	print(o[0])
 
 

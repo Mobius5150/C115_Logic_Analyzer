@@ -127,7 +127,7 @@ def solve_system(m, input_i, output_i, state_i, nstate_i, input_n, output_n, sta
 		                              +2*st_i,
 		                              all_input_index_list)
 		ast = imp_list_to_ast(implicant_list)
-		ast = simplify_ast(ast)
+		ast = sort_and_flatten_ast(simplify_ast(ast))
 		result = ast_to_string(ast, all_input_name_list) 
 		result_list.append((state_n[st_i]+'_J', result))
 
@@ -137,7 +137,7 @@ def solve_system(m, input_i, output_i, state_i, nstate_i, input_n, output_n, sta
 		                              +2*st_i+1,
 		                              all_input_index_list)
 		ast = imp_list_to_ast(implicant_list)
-		ast = simplify_ast(ast)
+		ast = sort_and_flatten_ast(simplify_ast(ast))
 		result = ast_to_string(ast, all_input_name_list)
 		result_list.append((state_n[st_i]+'_K', result))
 
@@ -147,7 +147,7 @@ def solve_system(m, input_i, output_i, state_i, nstate_i, input_n, output_n, sta
 		                              len(input_i)+len(state_i)+out_i,
 		                              all_input_index_list)
 		ast = imp_list_to_ast(implicant_list)
-		ast = simplify_ast(ast)
+		ast = sort_and_flatten_ast(simplify_ast(ast))
 		result = ast_to_string(ast, all_input_name_list)
 		result_list.append((output_n[out_i], result))
 

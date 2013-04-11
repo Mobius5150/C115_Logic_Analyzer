@@ -116,7 +116,7 @@ class CircuitProbe:
 		"""
 		return (CircuitProbe.NUM_GPIO > (inputs + states) and inputs > 0 and outputs > 0 and states >= 0)
 
-	def reset(self, inputs = None, outputs = None, states = None, enable_powercycle = False, propogation_time = 0.01, clock_time = 0.01):
+	def reset(self, inputs = None, outputs = None, states = None, enable_powercycle = True, propogation_time = 0.01, clock_time = 0.01):
 		"""
 		Resets the CircuitProbe to its base unanalysed state. You can use this to change
 		the number of inputs/outputs/states, if not specified the number of inputs/outputs/states
