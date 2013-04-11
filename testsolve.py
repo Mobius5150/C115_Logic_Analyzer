@@ -1,21 +1,28 @@
 
 from matrix import Matrix
-from solve import solve_system
+from solve import *
 
-# build a matrix
-M = Matrix(16, 8)
+"""
+Unit testing to make sure that the solver runs right during development.
+"""
 
-M.bin_set_row(0 , 0b0001110, 7)
-M.bin_set_row(1 , 0b1000111, 7)
-M.bin_set_row(2 , 0b0011110, 7)
-M.bin_set_row(3 , 0b1011111, 7)
-M.bin_set_row(4 , 0b0100110, 7)
-M.bin_set_row(5 , 0b1100111, 7)
-M.bin_set_row(6 , 0b0110010, 7)
-M.bin_set_row(7 , 0b1111010, 7)
+def test_function(f, inputcount):
+	M = Matrix(2**inputcount, inputcount+1)
+	for row in range(2**inputcount):
+		args = []
+		n = row
+		for _ in range(inputcount):
+			args.append(True if (n % 2) else False)
+			n >>= 1
+		args = args[::-1]
+		v = (ONE if f(*args) else ZERO)
+		n = (row << 1) + v
+		M.bin_set_row(row, n, inputcount+1)
 
-print(M)
+	o = solve_system(M, [x for x in range(inputcount)], [inputcount], [], [],
+		                ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'], ['X'], [])
 
-o = solve_system(M, [0,1,2], [4], [], [], ['a','i','j'], ['x', 'y', 'z'], [])
-for name, val in o:
-	print("%s = %s" % (name, val))
+	print(o[0])
+
+
+test_function(lambda a,b,c,d,e,f,g,h: ((a or b) and (c or d) and (e or f or g)) or h, 8)
