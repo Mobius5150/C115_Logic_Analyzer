@@ -171,7 +171,7 @@ class Matrix():
 			new_row = [self.__init_val for i in range(self.__column_size)]
 		else:
 			if len(new_row) < self.__column_size:
-				raise Exception("Error: Specified column too small.")
+				raise Exception("Error: Specified column too small for row: {}".format(new_row))
 		
 		self.__rows.append(new_row)
 
@@ -315,6 +315,36 @@ class Matrix():
 			matrix.insert_row([v[i] for v in self.__rows])
 
 		return matrix
+
+	def remove_duplicate_rows(self):
+		"""
+		Removes duplicate rows from a matrix.
+
+		Didn't write this, taken from: www.peterbe.com/plog/uniqifiers-benchmark
+
+		>>> M = Matrix(4, 2)
+		>>> M.bin_set_row(0, 1, 2)
+		>>> M.bin_set_row(1, 2, 2)
+		>>> M.bin_set_row(2, 1, 2)
+		>>> M
+		[0, 1]
+		[1, 0]
+		[0, 1]
+		[0, 0]
+
+		>>> M.remove_duplicate_rows()
+		>>> M
+		[0, 1]
+		[1, 0]
+		[0, 0]
+		"""
+		result = []
+		for row in self.__rows:
+			if row in result: continue
+			result.append(row)
+		self.__rows = result
+
+		self.__row_size = len(self.__rows)
 
 
 

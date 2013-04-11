@@ -552,6 +552,7 @@ class GUI():
 		next_state_indices = range(vals["inputs"] + vals["states"] + vals["outputs"], vals["inputs"] + (2*vals["states"]) + vals["outputs"])
 
 		# Run the simplifier
+		print("Running Solver")
 		self._solved = solve_system(self._probe.get_matrix(), 
 			input_indices, 
 			output_indices, 
@@ -597,13 +598,23 @@ class GUI():
 			for row in m
 			]
 
+		# Build the list of edge labels
+		attrs = { "edge_label": {} }
+		index = 0
+		for row in m:
+			if edges[index] in attrs["edge_label"]:
+				attrs["edge_label"][edges[index]] += ", " + "".join([str(c) for c in row[0:inputs]])
+			else:
+				attrs["edge_label"][edges[index]] = "".join([str(c) for c in row[0:inputs]])
+			index += 1
+
 		# Create a digraph to use
 		print("Creating Digraph")
 		graph = Digraph(edges)
 
 		# Draw the graph into a dot file
 		print("Creating dotfile")
-		graph.draw(filename="stategraph.dot")
+		graph.draw(filename="stategraph.dot", attr=attrs)
 
 		# Run graphviz on the dotfile
 		print("Launching xdot")

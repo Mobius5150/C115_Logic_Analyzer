@@ -81,7 +81,9 @@ def gen_dot_desc(G, graphtype='graph', attributes={}):
         " g {\n" + 
         "  ordering=out;\n" +
         "  node [shape=circle];\n" +
-        "  edge [penwidth=3];\n" 
+        "  edge [penwidth=2];\n" +
+        "  layout=neato;\n" +
+        "  nodeset=100;\n"
         )
 
     # now generate vertex and edges information

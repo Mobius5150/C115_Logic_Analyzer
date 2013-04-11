@@ -89,7 +89,7 @@ class Digraph:
         """
         Draws the graph into a dot file.
         """
-        display.write_dot_desc((self.vertices(), self.edges()), filename, attr)
+        display.write_dot_desc((self.vertices(), self.edges()), filename, attributes=attr, graphtype='digraph')
 
     def num_edges(self):
         m = 0
