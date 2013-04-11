@@ -26,8 +26,8 @@ class Implicant:
 			Is this minterm really a don't care term?
 		OneCount: Integer
 			The number of 1's in the possible inputs for this implicant.
-		Covered: Bool
-			Has this implicant been covered? (and is thus redundant)
+		Cover: List of Implicant
+			All the prime implicants covering this one.
 		Hash: Integer
 			Unique integer representing Values array, can be used to test
 			implicants for equivalence.
@@ -42,6 +42,8 @@ class Implicant:
 		self.Optional = optional
 		self.OneCount = 0
 		self.Covered = False
+		self.MintermCoverCount = 0
+		self.Minterms = [self]
 
 		# for debugging, calculate minterm number from inputs
 		# this will be overwritten for terms other than base terms
@@ -49,7 +51,7 @@ class Implicant:
 		for v in inputs:
 			num += v
 			num <<= 1
-		num >>= num
+		num >>= 1
 		self.Group.append(num)
 
 		# traverse the values list initializing the one and maybe count
@@ -90,6 +92,7 @@ class Implicant:
 
 
 def _fast_bucketed_join(imp_list, nvars):
+	#print("Do join...")
 	"""
 	Joins adjacent same-sized minterms.
 	Work on each size, creating halfing the number of implicants at each
@@ -114,9 +117,17 @@ def _fast_bucketed_join(imp_list, nvars):
 	for imp in imp_list:
 		current_buckets[imp.OneCount].append(imp)
 
+	# save a list of the level 1 implicants, the minterms
+	minterm_list = [x for x in imp_list]
+
 	# now, for repeatedly join terms at the curent number of either values
 	# and add them to the next level
 	for level in range(nvars+1):
+		#print("====== Level: %d" % level)
+		#clear the current covering data for the minterm level implicants
+		for minterm in minterm_list:
+			minterm.MintermCoverCount = 0
+
 		# make the buckets for the next level
 		next_level_buckets = [[] for i in range(nvars+1)]
 		next_level_hash_set = set()
@@ -129,6 +140,8 @@ def _fast_bucketed_join(imp_list, nvars):
 			# of ones +1.
 			for imp_a in current_buckets[nvars_a]:
 				for imp_b in current_buckets[nvars_a+1]:
+					# print("Trying to join: ", imp_to_string(imp_a, ['a', 'i', 'j']),
+					# 	                      imp_to_string(imp_b, ['a', 'i', 'j']))
 					# try to join the implicants. They should only differ in
 					# one place, where one contains a 0 and the other
 					# contains a 1.
@@ -140,6 +153,7 @@ def _fast_bucketed_join(imp_list, nvars):
 						a = imp_a.Values[i]
 						b = imp_b.Values[i]
 						if a != b and (a != ZERO or b != ONE):
+							#print("Can't join")
 							break
 					else:
 						# no bad value found, join
@@ -152,21 +166,46 @@ def _fast_bucketed_join(imp_list, nvars):
 								newinputs.append(imp_a.Values[i])
 
 						# make new implicant. Optional if both the joined 
-						# implicants were group consists of both of the old 
-						# implicant's groups.
+						# implicants were.
 						new_imp = Implicant(newinputs, \
 							               imp_a.Optional and imp_b.Optional)
-						new_imp.Group = imp_a.Group + imp_b.Group
 
-						# set the covered of the old implicants to true
+						#print("Do join => ", imp_to_string(new_imp, ['a', 'i', 'j']))
+
+						# set these implicants as covered by something, they
+						# are not part of a prime implicant at that level.
 						imp_a.Covered = True
 						imp_b.Covered = True
 
-						# add it to the list
+						# add it to the list if we don't have it added already
+						# Otherwise we could end up adding it twice, because 
+						# for "odd parity" implicants, there are two different 
+						# joins of implicants in the current level that could 
+						# generate a given implicant in the next level.
+						# EG: | + |, and -- + __ could both generate [_]
+						# "Odd parity" being implicants with an odd number of
+						# "maybe" terms. For even parity terms the result of a
+						# join must be unique.
+						# NOTE: above, we still set them as covered either 
+						# way, because even if the implicants were joined to a
+						# duplicate, they are not prime implicants.
 						if new_imp.Hash not in next_level_hash_set:
 							next_level_hash_set.add(new_imp.Hash)
 							next_level_buckets[new_imp.OneCount].append(\
 								                                      new_imp)
+							#print("not duplicate, add")
+
+							# minterms that form this one are the minterms
+							# that form both it was merged from.
+							new_imp.Minterms = imp_a.Minterms + imp_b.Minterms
+
+							# increment the cover count on those minterms
+							for mint in new_imp.Minterms:
+								#print("with minterm:", mint.Group[0])
+								mint.MintermCoverCount += 1
+						else:
+							pass
+							#print("duplicate")
 
 		# we have the buckets for the next level now. Look through the 
 		# current level for all of the prime implicants, and then
@@ -177,12 +216,39 @@ def _fast_bucketed_join(imp_list, nvars):
 				# then it is an essential prime implicant.
 				if not imp.Covered and not imp.Optional:
 					essential_imp_list.append(imp)
+					#print("Got EPI: %s" % imp_to_string(imp, ['a', 'i', 'j']))
 
 		# now set the current buckets to the next, and continue
 		current_buckets = next_level_buckets
 
+		# Mark "false EPIs", which are covered completely by other implicants
+		# from the new level,
+		# We still need these implicants for the next join, but they should
+		# not be found to be EPIs in the solution.
+		#print("Search for false EPIs")
+		for bucket in current_buckets:
+			for imp in bucket:
+				#print("imp:", imp_to_string(imp, ['a', 'i', 'j']))
+				for mint in imp.Minterms:
+					print(mint.Group[0], mint.MintermCoverCount)
+					if mint.MintermCoverCount <= 1:
+						break
+				else:
+					# all are >= 2, so mark this implicant as covered
+					for mint in imp.Minterms:
+						mint.MintermCoverCount -= 1
+					imp.Covered = True
+
+		# print("terms created:")
+		# for bucket in current_buckets:
+		# 	for imp in bucket:
+		# 		print("|", imp_to_string(imp, ['a', 'i', 'j']))
+
+
+
 	# now we have the essential prime implicants these give the simplest
 	# possible and-or representation for the circuit.
+	print("=> result: ", imp_list_to_string(essential_imp_list, ['a', 'i', 'j']))
 	return essential_imp_list
 
 
@@ -325,7 +391,7 @@ def _simplify_sum(sumnode):
 	best_term_tojoinwith = None
 	best_comb_heuristic = 0
 	num_candidates = 0
-	#print("Term:")
+
 	for term_inx, this_term in _ast_children(sumnode):
 		# for each var factor the term, see how many other terms share it
 		shares_per_factor = []
@@ -340,7 +406,7 @@ def _simplify_sum(sumnode):
 						if _ast_equiv(factor, otherfac):
 							# are equivalent, add to shared set
 							sharing_terms.add(otherterm_inx)
-							print(factor, otherfac)
+
 				# add the shares to the list of shares for the term, as long 
 				# as there are at least two terms sharing this factor
 				if len(sharing_terms) > 0:
@@ -348,8 +414,6 @@ def _simplify_sum(sumnode):
 		else:
 			# not a factor. Ignore it
 			pass
-
-		# print("Shares: ", shares_per_factor)
 
 		# now, look at all the combinations of shares and see which is the 
 		# best var to pull out for this term, if there is one to pull out.
@@ -383,12 +447,6 @@ def _simplify_sum(sumnode):
 		factors_to_pull = [fac for i,fac \
 		                       in _ast_children(base_term) \
 		                       if i in best_term_factors]
-
-		# print("Do simplify on: %s" % ast_to_string(sumnode, ['a', 'b', 'i']))
-		# print(join_with)
-		# print("Pull:")
-		# for x in factors_to_pull:
-		# 	print(ast_to_string(x, ['a', 'b', 'i']))
 
 		# now pull factors out
 		for term_inx in join_with:
