@@ -6,9 +6,11 @@ import random
 import sys
 from circuit_probe import CircuitProbe
 from solve import solve_system
+from digraph import Digraph
 
 from tkinter import *
 import tkinter.messagebox as MessageBox
+import subprocess
 # from bitflag import BitFlag
 
 
@@ -258,7 +260,8 @@ class GUI():
 		self._vscroll.configure( command=self._canvas.yview )	
 
 		def _do_resize(ev):
-			self._canvas_resize(ev.width, ev.height)
+			pass
+			# self._canvas_resize(ev.width, ev.height)
 
 		self._canvas.bind( "<Configure>", _do_resize)
 
@@ -338,6 +341,7 @@ class GUI():
 		row_header_x_space = 5
 		row_header_solutions_height = 20
 		solutions_font_size = 15
+		seperator_height = 2
 		io_graph_base_x = 0
 		io_graph_base_y = 0
 		
@@ -350,14 +354,22 @@ class GUI():
 
 		# Resize the canvas to fit the graph
 		x_size = max(self.default_canvas_x_size, row_header_width + (bit_size*matrix.get_num_cols()))
-		y_size = max(self.default_canvas_y_size, row_height * matrix.get_num_rows())
+		seperator_size = 2*seperator_height
+		if states:
+			seperator_size = 4*seperator_height
+
+		if self._display_solved:
+			y_size = max(self.default_canvas_y_size, 
+						row_height * matrix.get_num_rows() + outputs * row_header_solutions_height + seperator_size)
+		else:
+			y_size = max(self.default_canvas_y_size, row_height * matrix.get_num_rows() + seperator_size)
 		self.canvas_resize(x_size, y_size)
 
 		canvas_x = row_header_width
 		canvas_y = 0
 
 		# Paint gridlines
-		while canvas_x < x_size:
+		while canvas_x < x_size + 1:
 			self._canvas.create_line(canvas_x, canvas_y, canvas_x, y_size, fill=gridline_colour, dash=(2, 4))
 			canvas_x += bit_size
 
@@ -382,8 +394,8 @@ class GUI():
 			if last_row_type and row_type != last_row_type:
 				canvas_y += 2
 				self._canvas.create_line(canvas_x, canvas_y, 
-					x_size, canvas_y, 
-					fill=row_header_bg_colour, width=2)
+					self._canvas_x_size, canvas_y, 
+					fill=row_header_bg_colour, width=seperator_height)
 				canvas_y += 1
 			last_row_type = row_type
 
@@ -480,6 +492,7 @@ class GUI():
 		# quit()
 
 	def _do_reset(self, ev=None):
+		self._analysis_complete = False
 		self._canvas.delete(ALL)
 		self._graph_drawn = False
 		self._solved = None
@@ -553,10 +566,48 @@ class GUI():
 
 		self.draw_io_graph()
 
+		self._analysis_complete = True
+
 
 	def _do_view_stategraph(self):
-		print("_do_view_stategraph not implemented.")
-		pass
+		"""
+		Generates a stategraph of analyzed data.
+		"""
+		# Check if the analysis is complete
+		if not self._analysis_complete:
+			print("No data to generate stategraph from!")
+			return
+
+		if self._probe.get_num_states == 0:
+			print("Cannot draw a stategraph of a non-stateful graph!")
+			return
+
+		print("Building stategraph")
+
+		inputs = self._probe.get_num_inputs()
+		outputs = self._probe.get_num_outputs()
+		states = self._probe.get_num_states()
+
+		# Build the edges for the graph
+		print("Compiling edges")
+		m = self._probe.get_matrix()
+		edges = [
+				(self._probe.get_numerical_state_representation(row[inputs:(inputs+states)]),
+				 self._probe.get_numerical_state_representation(row[(inputs+states+outputs):(inputs+2*states+outputs)]))
+			for row in m
+			]
+
+		# Create a digraph to use
+		print("Creating Digraph")
+		graph = Digraph(edges)
+
+		# Draw the graph into a dot file
+		print("Creating dotfile")
+		graph.draw(filename="stategraph.dot")
+
+		# Run graphviz on the dotfile
+		print("Launching xdot")
+		subprocess.Popen(["xdot", "stategraph.dot"])
 
 	def _do_power_on(self):
 		if self._probe:
