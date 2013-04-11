@@ -260,7 +260,8 @@ class GUI():
 		self._vscroll.configure( command=self._canvas.yview )	
 
 		def _do_resize(ev):
-			self._canvas_resize(ev.width, ev.height)
+			pass
+			# self._canvas_resize(ev.width, ev.height)
 
 		self._canvas.bind( "<Configure>", _do_resize)
 
@@ -340,6 +341,7 @@ class GUI():
 		row_header_x_space = 5
 		row_header_solutions_height = 20
 		solutions_font_size = 15
+		seperator_height = 2
 		io_graph_base_x = 0
 		io_graph_base_y = 0
 		
@@ -352,14 +354,22 @@ class GUI():
 
 		# Resize the canvas to fit the graph
 		x_size = max(self.default_canvas_x_size, row_header_width + (bit_size*matrix.get_num_cols()))
-		y_size = max(self.default_canvas_y_size, row_height * matrix.get_num_rows())
+		seperator_size = 2*seperator_height
+		if states:
+			seperator_size = 4*seperator_height
+
+		if self._display_solved:
+			y_size = max(self.default_canvas_y_size, 
+						row_height * matrix.get_num_rows() + outputs * row_header_solutions_height + seperator_size)
+		else:
+			y_size = max(self.default_canvas_y_size, row_height * matrix.get_num_rows() + seperator_size)
 		self.canvas_resize(x_size, y_size)
 
 		canvas_x = row_header_width
 		canvas_y = 0
 
 		# Paint gridlines
-		while canvas_x < x_size:
+		while canvas_x < x_size + 1:
 			self._canvas.create_line(canvas_x, canvas_y, canvas_x, y_size, fill=gridline_colour, dash=(2, 4))
 			canvas_x += bit_size
 
@@ -384,8 +394,8 @@ class GUI():
 			if last_row_type and row_type != last_row_type:
 				canvas_y += 2
 				self._canvas.create_line(canvas_x, canvas_y, 
-					x_size, canvas_y, 
-					fill=row_header_bg_colour, width=2)
+					self._canvas_x_size, canvas_y, 
+					fill=row_header_bg_colour, width=seperator_height)
 				canvas_y += 1
 			last_row_type = row_type
 
