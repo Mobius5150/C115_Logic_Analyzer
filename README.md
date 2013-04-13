@@ -35,27 +35,51 @@ does the following:
 
 The Solver
 ==========
-The solver attempts to determine logical expressions for the outputs of the
-circuit in terms of the circuit inputs and state machines.
+The program contains a general expression solver, which can take in a set of
+inputs -> output pairs and generate an expression for the output in terms of
+those inputs. Note: The solver can handle some of the pairs having an output
+of "unspecified", and will choose the better choice towards optimizing the
+expression to the smallest possible form. This code is located in solver.py
 
-The solver is called by the GUI after the Circuit Probe has finished collecting
-data. It takes the matrix of data that has been acquired and begins by trying
-to combine implicants with their logical neighbhours. After each step the solver
-advances to a higher level and combines the non-prime implicants to try and form
-the largest possible common block. 
+This base solver has no actual notion of actual input/output/state circuits, it
+simply knows how to generate an expression for inputs in terms of outputs. In
+order for the GUI to easily call on simplification of the data, there is an
+extra translation utility function to solve a whole system. This function takes
+a system of inputs, outputs, and states, and solves each of the outputs in terms
+of the inputs, as well as solving the J/K inputs to JKflip-flops that could be
+used to implement the state of the cirtuit. This code is located in solve.py
 
-At this point, if the circuit contains any stateful elements (assumed to be
-JK Flip Flops) the solver determines the input equations for the J and K inputs
-to the flip flops.
+Overall workflow:
+input matrix from probe -> system solver -> solve several expressions
 
-Once a minimal representation is found the solver then applies a heuristic
-factoring algorithm to try and factor the known terms of the outputs into
-a more human friendly form for displaying.
+The base implementation expression solver uses two main phases to do the
+simplification:
 
-In order to keep the modular design of the project, the main algorithm for the 
-solver is located within solver.py, whereas the interface to the solver for the
-main application (GUI) is located within solve.py as it is specific to the 
-needs of the project, but seperate from the actual solver logic.
+1) Quine–McCluskey Algorithm
+
+The Quine–McCluskey algorithm is first run on the input to get a minimal and-or
+form expression for the output. This involves first taking all of the implicants
+containing only one minterm. Then repeatedly joining adjacent implicants into
+larger ones, and marking all of the remaining implicants as essential. The final
+result is all of those prime implicants.
+
+2) Factoring Engine
+
+The remaining terms in the and-or form solution may still have common factors
+that can be pulled out from them to reduce the complexity of the resulting
+expression. The factoring engine recursively factors expressions out of the main
+expression, using the heuristic:
+Maximize: (size of expression to factor out)*(number of terms that contain it)
+This gives a result fairly close to the optimal number of and/or gates to
+implement a given expression.
+
+In order to keep the modular design of the project, the GUI elements of the
+program only have to call on the system-solver located in solve.py, and do not
+have to touch the base expression solving function.
+
+solver.py also contains some utilites for pretty printing and formatting outputs
+from the various simplification functions.
+
 
 The Matrix Class
 ================
