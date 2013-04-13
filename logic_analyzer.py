@@ -1,5 +1,16 @@
 """
 Main logic analyzer class. Implements the main window GUI.
+
+Based on the GUI from the Zombie Game assignment for CMPUT 115.
+
+The Logic Analyzer GUI
+======================
+The main Logic Analyzer program is located within logic_analyzer.py. It
+implements the GUI for the program. It uses the Tkinter framework to create its
+graphical interface. It also implements the methods responsible for displaying
+the input/output/state graph within the main window and for taking the matrix
+data and turning it into a Digraph to be displayed whrn the user requests a
+stategraph for the circuit.
 """
 
 import random
@@ -11,8 +22,6 @@ from digraph import Digraph
 from tkinter import *
 import tkinter.messagebox as MessageBox
 import subprocess
-# from bitflag import BitFlag
-
 
 # Singleton GUI instance, only one allowed to be created, remember it for
 # global access.
@@ -21,47 +30,8 @@ import subprocess
 # the module.
 
 gui = None
-# debug = BitFlag()
 
 class GUI():
-	"""
-
-	Constructor:
-
-	GUI(init_fn=None, step_fn=None, title="Simulation"):
-
-	The GUI constructor  will raise an exception if you try to create 
-	more than one instance.
-	
-	init_fn() - is a function that is called on simulation start that
-		sets up the initial conditions for the simulation.  
-
-	step_fn() - is a function that is called on each time step of the
-		simulation.  
-
-	title is the text displayed on the top of the window
-
-	The simulation does not begin until you invoke agentsim.gui.start()
-
-	To get to the canvas in order to draw additional graphics use
-		canvas = agentsim.gui.get_canvas()
-	which resturns the canvas object, so that, for example, you can 
-	add additional artifacts:
-
-	agentsim.gui.get_canvas().create_oval(10, 20, 30, 40, fill='black')
-
-	To get the dimensions of the canvas use
-		(x_size, y_size) = agentsim.gui.get_canvas_size():
-
-	To get the actual coordinate space of the canvas use
-		(x_min, y_min, x_max, y_max) = agentsim.gui.get_canvas_coords():
-
-	Two convenient clipping functions are provided to ensure that points
-	(x,y) will be clipped to be within the canvas coordinate space
-		new_x = agentsim.gui.clip_x(x)
-		new_y = agentsim.gui.clip_y(y)
-
-	"""
 
 	# there can only be one instance of this class
 	num_instances = 0
@@ -168,6 +138,7 @@ class GUI():
 		#   View Stategraph Opens the stategraph for the analyzed circuit
 		#   Power On        Powers the circuit on
 		# 	Power Off 		Powers the circuit off
+		#   Display Solutions Toggles the display of solutions within the I/O/S graph.
 
 		self._b1 = Button(self._frame,
 			text='Analyze',

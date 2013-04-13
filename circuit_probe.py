@@ -1,12 +1,25 @@
 """
-Designed to probe a circuit for analysis.
+The Circuit Probe
+=================
+The CircuitProbe class implements the data 
+collection algorithm for the project. It is responsible for all manipulation of 
+the circuit and reading of output/state values. While analyzing a circuit it 
+does the following:
+	1. Walk through the circuit, following the natural flow of states. Each
+	   time it encounters a new state the first untested input (starting with 0)
+	   is attempted. Once a state has had all inputs tried on it this step ends.
+    2. Pathfind through the circuit. Now that the probe has walked through the
+       circuit it attempts to use the basic map to find all possible reachable
+       states. It does this by using Dijkstra's algorithm to search for the
+       closest untested input within the known states that it knows how to get
+       to, and goes there. A note: the probe is able to powercycle a circuit
+       in order to reset it to its base state. This ability is considered within
+       the pathfinding algorithm.
 
 
-Restrictions:
-	For for combinatorial circuits:
-
-	For stateful circuits:
-		All flip flops should be clocked to the exact same edge. 
+Restrictions for stateful circuits:
+	All flip flops must be indicated as a stateful element and should have 
+	state inputs directly connected to them.
 """
 
 
@@ -47,7 +60,8 @@ class CircuitProbe:
 			
 
 		# Setup the base state
-		self.reset(inputs = inputs, outputs = outputs, states = states, enable_powercycle = enable_powercycle, propogation_time = propogation_time)
+		self.reset(inputs = inputs, outputs = outputs, states = states, 
+			enable_powercycle = enable_powercycle, propogation_time = propogation_time)
 
 	def get_type_for_column(self, col):
 		"""
@@ -116,7 +130,8 @@ class CircuitProbe:
 		"""
 		return (CircuitProbe.NUM_GPIO > (inputs + states) and inputs > 0 and outputs > 0 and states >= 0)
 
-	def reset(self, inputs = None, outputs = None, states = None, enable_powercycle = True, propogation_time = 0.01, clock_time = 0.01):
+	def reset(self, inputs = None, outputs = None, states = None, enable_powercycle = True,
+			  propogation_time = 0.01, clock_time = 0.01):
 		"""
 		Resets the CircuitProbe to its base unanalysed state. You can use this to change
 		the number of inputs/outputs/states, if not specified the number of inputs/outputs/states
@@ -266,7 +281,8 @@ class CircuitProbe:
 		self.matrix.insert_row()
 		self.matrix.bin_set_row(-1,test_val, self.__inputs)
 		self.matrix.bin_set_row(-1,current_state_bin, self.__states, start_offset = self.__inputs)
-		self.matrix.bin_set_row(-1,self.get_current_output(), self.__outputs, start_offset = self.__inputs + self.__states)
+		self.matrix.bin_set_row(-1,self.get_current_output(), self.__outputs, 
+			start_offset = self.__inputs + self.__states)
 
 		# Clock the circuit
 		self.pulse_clock()
@@ -554,20 +570,13 @@ class CircuitProbe:
 					if last_state in untested:
 						# If the current state has untested stuff, break free!
 						print("State found!")
-						break
+						breaks
 
 		# If we made it this far, then we most likely introduced duplicate rows in the matrix.
 		self.matrix.remove_duplicate_rows()
 
 		self.power_off()
 		return untested
-
-	def follow_path_to_state(self, path, desired_state):
-		"""
-		Follows the given path to the desired state
-		"""
-		print("Get_to_state not implemented")
-		pass
 
 if __name__ == "__main__":
 	# Disable debug mode
